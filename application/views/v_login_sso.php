@@ -20,15 +20,7 @@
       <!-- <h3>APLIKASI MONITORING KEUANGAN</h3>      -->
     </div>
 
-    <?php 
-    $client_id = '';
-    if(isset($_GET['client_id'])){
-      $client_id = $_GET['client_id'];
-    }
-
-    $alert = isset($_GET['alert'])? $_GET['alert']: '';
-    $alert = empty($client_id)? 'Unauthorized Access': $alert;
-
+    <?php
     if(!empty($alert)){  
       echo "<div class='alert alert-danger font-weight-bold text-center'>$alert</div>";
     } 
@@ -41,29 +33,39 @@
 
         <img src="<?php echo base_url('gambar/logo.png') ?>" class="img-responsive">
 
-        <form action="<?php echo base_url().'sso/login' ?>" method="post">
-          <input type="hidden" name="client_id" value="<?php echo $client_id ?>">
-          <div class="form-group has-feedback">          
-            <input type="text" class="form-control" placeholder="Username" name="username">
-            <span class="glyphicon glyphicon-user form-control-feedback"></span>
+        <div style="position: relative; top: -50px;">
+          <div class="col-12 text-center">
+            <h3><?php echo $app_name ?></h3>
           </div>
-          <?php echo form_error('username'); ?>
 
-          <div class="form-group has-feedback">
-            <input type="password" class="form-control" placeholder="Password" name="password">
-            <span class="glyphicon glyphicon-lock form-control-feedback"></span>
+          <div class="col-12 text-center">
+            <h4><?php echo $app_desc ?></h4>
           </div>
-          <?php echo form_error('password'); ?>
-          
 
-          <div class="row">
-
-            <div class="col-xs-12">
-              <button type="submit" class="btn btn-primary btn-block btn-flat">LOGIN</button>
+          <form action="<?php echo base_url().'sso/login' ?>" method="post">
+            <input type="hidden" name="client_id" value="<?php echo $client_id ?>">
+            <div class="form-group has-feedback">          
+              <input type="text" class="form-control" placeholder="Username" name="username">
+              <span class="glyphicon glyphicon-user form-control-feedback"></span>
             </div>
-          </div>
+            <?php echo form_error('username'); ?>
 
-        </form>
+            <div class="form-group has-feedback">
+              <input type="password" class="form-control" placeholder="Password" name="password">
+              <span class="glyphicon glyphicon-lock form-control-feedback"></span>
+            </div>
+            <?php echo form_error('password'); ?>
+            
+
+            <div class="row">
+
+              <div class="col-xs-12">
+                <button type="submit" class="btn btn-primary btn-block btn-flat">LOGIN</button>
+              </div>
+            </div>
+
+          </form>
+        </div>
 
       </div>
     <?php

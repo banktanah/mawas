@@ -22,7 +22,29 @@ class Sso extends CI_Controller {
 
 	public function index()
 	{
-		$this->load->view('v_login_sso');
+		$get = $this->input->get(NULL, TRUE);
+		$data = [];
+
+		if(empty($get['client_id'])){
+			$data['alert'] = 'Unauthorized Access';
+		}else{
+			$appdata = $this->db
+			->select('apps_nama, apps_desc')
+			->from('apps')
+			->where('client_id', $get['client_id'])
+			->get()
+			->row();
+
+			if(empty($appdata)){
+				$data['alert'] = 'Unauthorized Access';
+			}else{
+				$data['client_id'] = $get['client_id'];
+				$data['app_name'] = $appdata->apps_nama;
+				$data['app_desc'] = $appdata->apps_desc;
+			}
+		}
+
+		$this->load->view('v_login_sso', $data);
 	}
 	
 	public function login()
