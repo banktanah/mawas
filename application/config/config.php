@@ -521,3 +521,11 @@ $config['rewrite_short_tags'] = FALSE;
 | Array:		array('10.0.1.200', '192.168.5.0/24')
 */
 $config['proxy_ips'] = '';
+
+/**
+ * SSO Configs
+ */
+$config['sso'] = [
+    'access_token_age' => (60 * 3),
+    'refresh_token_age' => (60 * 60 * 12),
+];
