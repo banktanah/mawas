@@ -523,6 +523,24 @@ $config['rewrite_short_tags'] = FALSE;
 $config['proxy_ips'] = '';
 
 /**
+ * SMTP Configurations
+ */
+ $config['smtp'] = [
+    'protocol' => 'smtp',
+    'smtp_host' => 'xxxxxxx',
+    'smtp_crypto' => 'ssl',
+    'smtp_port' => 465,
+    'smtp_user' => 'username@domain.com',
+    'smtp_pass' => 'somepassword',
+    'charset'   => 'iso-8859-1',
+    'wordwrap' => TRUE,
+    'smtp_timeout' => 30,
+    'newline' => "\r\n",
+    'crlf' => "\r\n",
+    'mailtype'  => 'html'
+];
+
+/**
  * SSO Configs
  * 
  * 'method' => db | smtp
