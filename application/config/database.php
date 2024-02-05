@@ -76,14 +76,14 @@ $query_builder = TRUE;
 $db['default'] = array(
 	'dsn'	=> '',
 	//localhost
-	// 'hostname' => 'localhost',
-	// 'username' => 'root',
-	// 'password' => '',
+	'hostname' => 'localhost',
+	'username' => 'root',
+	'password' => '',
 
 	//prod server
-	'hostname' => '10.254.42.21',
-	'username' => 'admin_mawas',
-	'password' => 'Banktanah2022@@',
+	// 'hostname' => '10.254.42.21',
+	// 'username' => 'admin_mawas',
+	// 'password' => 'Banktanah2022@@',
 	'database' => 'db_mawas',
 	'dbdriver' => 'mysqli',
 	'dbprefix' => '',

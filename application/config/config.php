@@ -524,8 +524,20 @@ $config['proxy_ips'] = '';
 
 /**
  * SSO Configs
+ * 
+ * 'method' => db | smtp
+ * db: login using credential in mawas db
+ * smtp: login using smtp credential
+ * 
  */
 $config['sso'] = [
+    'method' => 'db',
+    'smtp' => [
+        'smtp_host' => 'xxxxxx',
+        'smtp_port' => 465,
+        'smtp_crypto' => 'ssl',
+        'smtp_timeout' => 30,
+    ],
     'access_token_age' => (60 * 3),
     'refresh_token_age' => (60 * 60 * 12),
 ];

@@ -9,13 +9,18 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Firebase\JWT\SignatureInvalidException;
 
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception as PHPMailerException;
+
 class Sso extends CI_Controller {
+	private $login_method;
 	private $access_age;
 	private $refresh_age;
 
 	function __construct(){
 		parent::__construct();
 		$sso_config = $this->config->item('sso');
+		$this->login_method = $sso_config['method'];
 		$this->access_age = (int)$sso_config['access_token_age'];
 		$this->refresh_age = (int)$sso_config['refresh_token_age'];
 	}
@@ -24,6 +29,10 @@ class Sso extends CI_Controller {
 	{
 		$get = $this->input->get(NULL, TRUE);
 		$data = [];
+
+		if(!empty($get['alert'])){
+			$data['alert'] = $get['alert'];
+		}
 
 		if(empty($get['client_id'])){
 			$data['alert'] = 'Unauthorized Access';
@@ -69,16 +78,52 @@ class Sso extends CI_Controller {
 		$username = $postdatas['username'];
 		$password = $postdatas['password'];
 
-		$userdata = $this->db
-		->select('user_id')
-		->from('user')
-		->where([
-			'user_username' => $username,
-			'user_password' => md5($password),
-			'is_disabled' => 0
-		])
-		->get()
-		->row();
+		$userdata = null;
+
+		if($this->login_method == SSO_METHOD_DB){ //login using mawas-db
+			$userdata = $this->db
+			->select('user_id')
+			->from('user')
+			->group_start() //this will start grouping
+			->where('user_username', $username)
+			->or_where('nip', $username)
+			->group_end() //this will end grouping
+			->where('user_password', md5($password))
+			->where('is_disabled', 0)
+			->get()
+			->row();
+		}else if($this->login_method == SSO_METHOD_SMTP){ //login using mailservice
+			$smtp_config = $this->config->item('sso')['smtp'];
+			try{
+				$mail = new PHPMailer(true);
+				$mail->SMTPAuth = true;
+				$mail->Username = $username;
+				$mail->Password = $password;
+				$mail->Host = $smtp_config['smtp_host'];
+				$mail->Port = $smtp_config['smtp_port'];
+				$mail->SMTPSecure = $smtp_config['smtp_crypto'];
+				$mail->Timeout = $smtp_config['smtp_timeout'];
+		
+				// This function returns TRUE if authentication
+				// was successful, or throws an exception otherwise
+				$validCredentials = $mail->SmtpConnect();
+				if($validCredentials){
+					$userdata = $this->db
+					->select('user_id')
+					->from('user')
+					->where('user_username', $username)
+					->where('is_disabled', 0)
+					->get()
+					->row();
+				}
+			}catch(PHPMailerException $e){
+				if($e->getMessage() == 'SMTP Error: Could not authenticate.'){
+					//wrong username or password
+				}else{
+					throw $e;
+				}
+			}
+		}
 
 		if(empty($userdata)){
 			$alert = urlencode("Username/Password salah !");
