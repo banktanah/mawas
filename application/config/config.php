@@ -23,7 +23,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | a PHP script and you can easily do that on your own.
 |
 */
-$config['base_url'] = 'http://'.$_SERVER['HTTP_HOST'].'/mawas';
+$config['base_url'] = 'http://'.$_SERVER['HTTP_HOST'].$_ENV['BASE_URI'];
 
 /*
 |--------------------------------------------------------------------------
@@ -136,7 +136,7 @@ $config['subclass_prefix'] = 'MY_';
 | Note: This will NOT disable or override the CodeIgniter-specific
 |	autoloading (application/config/autoload.php)
 */
-$config['composer_autoload'] = FALSE;
+$config['composer_autoload'] = TRUE;
 
 /*
 |--------------------------------------------------------------------------
@@ -324,7 +324,7 @@ $config['cache_query_string'] = FALSE;
 | https://codeigniter.com/user_guide/libraries/encryption.html
 |
 */
-$config['encryption_key'] = 'CMSwebsitemalasngodingdengancodeigniter123';
+$config['encryption_key'] = 'df58f41935d1400bb758e189a809e0ae';
 
 /*
 |--------------------------------------------------------------------------
@@ -527,11 +527,11 @@ $config['proxy_ips'] = '';
  */
  $config['smtp'] = [
     'protocol' => 'smtp',
-    'smtp_host' => 'xxxxxxx',
+    'smtp_host' => $_ENV['SMTP_HOST'],
     'smtp_crypto' => 'ssl',
-    'smtp_port' => 465,
-    'smtp_user' => 'username@domain.com',
-    'smtp_pass' => 'somepassword',
+    'smtp_port' => $_ENV['SMTP_PORT'],
+    'smtp_user' => $_ENV['SMTP_USER'],
+    'smtp_pass' => $_ENV['SMTP_PASS'],
     'charset'   => 'iso-8859-1',
     'wordwrap' => TRUE,
     'smtp_timeout' => 30,
@@ -549,10 +549,10 @@ $config['proxy_ips'] = '';
  * 
  */
 $config['sso'] = [
-    'method' => 'db',
+    'method' => $_ENV['SSO_METHOD'],
     'smtp' => [
-        'smtp_host' => 'xxxxxx',
-        'smtp_port' => 465,
+        'smtp_host' => $_ENV['SSO_SMTP_HOST'],
+        'smtp_port' => $_ENV['SSO_SMTP_PORT'],
         'smtp_crypto' => 'ssl',
         'smtp_timeout' => 30,
     ],

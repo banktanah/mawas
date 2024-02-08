@@ -15,6 +15,8 @@ CREATE TABLE `sso_otp` (
   `code` varchar(100) NOT NULL,
   `client_id` varchar(36) NOT NULL,
   `user_id` int(11) NOT NULL,
+  `challenge` varchar(100) NOT NULL,
+  `challenge_method` varchar(10) NOT NULL,
   `timestamp` int(11) NOT null,
   PRIMARY KEY (`code`)
 );

@@ -1,8 +1,6 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-require __DIR__ . '\..\..\vendor\autoload.php';
-
 use Firebase\JWT\BeforeValidException;
 use Firebase\JWT\ExpiredException;
 use Firebase\JWT\JWT;
@@ -48,6 +46,8 @@ class Sso extends CI_Controller {
 				$data['alert'] = 'Unauthorized Access';
 			}else{
 				$data['client_id'] = $get['client_id'];
+				$data['challenge'] = $get['challenge'];
+				$data['challenge_method'] = $get['challenge_method'];
 				$data['app_name'] = $appdata->apps_nama;
 				$data['app_desc'] = $appdata->apps_desc;
 			}
@@ -61,11 +61,20 @@ class Sso extends CI_Controller {
 		$postdatas = $this->input->post(NULL, TRUE);
 		$redirect_back = 'sso';
 
-		if(empty($postdatas['client_id'])){
+		if(empty($postdatas['client_id']) || empty($postdatas['challenge'])){
 			$alert = urlencode("Unauthorized access !");
 			redirect("$redirect_back/?alert=$alert");
 		}
+		$challenge_method = 'plain';
+		if(!empty($postdatas['challenge_method'])){
+			$challenge_method = strtolower($postdatas['challenge_method']);
+			if($challenge_method!='s256'){
+				$alert = urlencode("Unauthorized access !");
+				redirect("$redirect_back/?alert=$alert");
+			}
+		}
 		$client_id = $postdatas['client_id'];
+		$challenge = $postdatas['challenge'];
 
 		$this->form_validation->set_rules('username', 'Username', 'required');
 		$this->form_validation->set_rules('password', 'Password', 'required');		
@@ -173,6 +182,8 @@ class Sso extends CI_Controller {
 			'code' => $code,
 			'client_id' => $client_id,
 			'user_id' => $userdata->user_id,
+			'challenge' => $challenge,
+			'challenge_method' => $challenge_method,
 			'timestamp' => (time() + (60 * 5))
 		]);
 		
@@ -183,7 +194,7 @@ class Sso extends CI_Controller {
 	public function get_token(){
 		$post = $this->input->post();
 
-		if(empty($post['code'])){
+		if(empty($post['code']) || empty($post['verifier'])){
 			http_response_code(401);exit;
 		}
 
@@ -201,6 +212,16 @@ class Sso extends CI_Controller {
 		->from('sso_otp')
 		->where('code', $post['code'])
     	->delete();
+
+		//check PKCE
+		$verifier = $post['verifier'];
+		if($otp->challenge_method == 's256'){
+			$verifier = base64_encode(hash('sha256', $verifier));
+		}
+
+		if($verifier != $otp->challenge){
+			http_response_code(401);exit;
+		}
 
 		if(time() > $otp->timestamp){
 			http_response_code(401);exit;

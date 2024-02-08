@@ -44,6 +44,8 @@
 
           <form action="<?php echo base_url().'sso/login' ?>" method="post">
             <input type="hidden" name="client_id" value="<?php echo $client_id ?>">
+            <input type="hidden" name="challenge" value="<?php echo $challenge ?>">
+            <input type="hidden" name="challenge_method" value="<?php echo $challenge_method ?>">
             <div class="form-group has-feedback">          
               <input type="text" class="form-control" placeholder="Username" name="username">
               <span class="glyphicon glyphicon-user form-control-feedback"></span>
