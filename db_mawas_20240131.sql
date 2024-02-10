@@ -20,3 +20,12 @@ CREATE TABLE `sso_otp` (
   `timestamp` int(11) NOT null,
   PRIMARY KEY (`code`)
 );
+
+CREATE TABLE `forgot_password` (
+	reset_code varchar(100) NOT NULL,
+	nip varchar(50) NOT NULL,
+	created_date datetime NOT NULL,
+	is_used int DEFAULT 0 NULL,
+  	PRIMARY KEY (`reset_code`),
+	UNIQUE KEY `forgot_password_unique` (`nip`,`created_date`)
+);

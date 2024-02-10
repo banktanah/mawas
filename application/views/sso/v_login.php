@@ -23,11 +23,22 @@
     <?php
     if(!empty($alert)){  
       echo "<div class='alert alert-danger font-weight-bold text-center'>$alert</div>";
-    } 
+    }
+
+    ?>
+    <?php 
+        if($this->session->flashdata('error')) { 
+    ?>
+          <div class="alert alert-danger" role="alert">
+              <?=$this->session->flashdata('error')?>
+          </div>
+    <?php 
+        } 
     ?>
 
     <?php
       if(!empty($client_id)){
+        $username_cache = !empty($this->session->flashdata('username_cache'))? $this->session->flashdata('username_cache'): '';
     ?>
       <div class="login-box-body">
 
@@ -46,24 +57,27 @@
             <input type="hidden" name="client_id" value="<?php echo $client_id ?>">
             <input type="hidden" name="challenge" value="<?php echo $challenge ?>">
             <input type="hidden" name="challenge_method" value="<?php echo $challenge_method ?>">
-            <div class="form-group has-feedback">          
-              <input type="text" class="form-control" placeholder="Username" name="username">
+            <div class="form-group has-feedback">
+              <input type="text" class="form-control" placeholder="NIP/Email" name="username" value="<?=$username_cache?>">
               <span class="glyphicon glyphicon-user form-control-feedback"></span>
             </div>
-            <?php echo form_error('username'); ?>
 
             <div class="form-group has-feedback">
               <input type="password" class="form-control" placeholder="Password" name="password">
               <span class="glyphicon glyphicon-lock form-control-feedback"></span>
             </div>
-            <?php echo form_error('password'); ?>
             
-
             <div class="row">
-
               <div class="col-xs-12">
                 <button type="submit" class="btn btn-primary btn-block btn-flat">LOGIN</button>
               </div>
+            </div>
+
+            <div class="row text-center">
+              <span>Lupa Password?</span>
+              <a class="cssbuttongo" href='<?= (base_url()."sso/forgot_password?client_id=$client_id") ?>'>
+                  <span>Click Here</span>
+              </a>
             </div>
 
           </form>

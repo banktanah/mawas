@@ -21,6 +21,8 @@ class Sso extends CI_Controller {
 		$this->login_method = $sso_config['method'];
 		$this->access_age = (int)$sso_config['access_token_age'];
 		$this->refresh_age = (int)$sso_config['refresh_token_age'];
+
+		$this->load->model('Forgotpasswordmodel', 'forgot');
 	}
 
 	public function index()
@@ -36,7 +38,7 @@ class Sso extends CI_Controller {
 			$data['alert'] = 'Unauthorized Access';
 		}else{
 			$appdata = $this->db
-			->select('apps_nama, apps_desc')
+			->select('apps_nama, apps_desc, domain, redirect_uri')
 			->from('apps')
 			->where('client_id', $get['client_id'])
 			->get()
@@ -50,39 +52,47 @@ class Sso extends CI_Controller {
 				$data['challenge_method'] = $get['challenge_method'];
 				$data['app_name'] = $appdata->apps_nama;
 				$data['app_desc'] = $appdata->apps_desc;
+				$data['client_home'] = urlencode("$appdata->domain/$appdata->redirect_uri");
 			}
 		}
 
-		$this->load->view('v_login_sso', $data);
+		$this->load->view('sso/v_login', $data);
 	}
 	
 	public function login()
 	{
 		$postdatas = $this->input->post(NULL, TRUE);
 		$redirect_back = 'sso';
+		$valid_params = [
+			"client_id=".$postdatas["client_id"],
+			"challenge=".$postdatas["challenge"],
+			"challenge_method=".$postdatas["challenge_method"],
+		];
 
 		if(empty($postdatas['client_id']) || empty($postdatas['challenge'])){
-			$alert = urlencode("Unauthorized access !");
-			redirect("$redirect_back/?alert=$alert");
+			$this->session->set_flashdata('error', "Unauthorized access !");
+			redirect($redirect_back);
 		}
 		$challenge_method = 'plain';
 		if(!empty($postdatas['challenge_method'])){
 			$challenge_method = strtolower($postdatas['challenge_method']);
 			if($challenge_method!='s256'){
-				$alert = urlencode("Unauthorized access !");
-				redirect("$redirect_back/?alert=$alert");
+				$this->session->set_flashdata('error', "Invalid Challenge Method !");
+				redirect($redirect_back);
 			}
 		}
 		$client_id = $postdatas['client_id'];
 		$challenge = $postdatas['challenge'];
 
-		$this->form_validation->set_rules('username', 'Username', 'required');
-		$this->form_validation->set_rules('password', 'Password', 'required');		
+		$this->form_validation->set_rules('username', '', 'required');
+		$this->form_validation->set_rules('password', '', 'required');		
 
 		if($this->form_validation->run() == false){
-			$alert = urlencode("Username/Password harus diisi !");
-			redirect("$redirect_back/?client_id=$client_id&alert=$alert");
+			$this->session->set_flashdata('error', "Username/Password harus diisi !");
+			redirect($redirect_back.'?'.implode('&', $valid_params));
 		}
+		
+		$this->session->set_flashdata('username_cache', $postdatas['username']);
 
 		$username = $postdatas['username'];
 		$password = $postdatas['password'];
@@ -93,11 +103,14 @@ class Sso extends CI_Controller {
 			$userdata = $this->db
 			->select('user_id')
 			->from('user')
-			->group_start() //this will start grouping
-			->where('user_username', $username)
-			->or_where('nip', $username)
-			->group_end() //this will end grouping
-			->where('user_password', md5($password))
+			->group_start()
+				->where('user_username', $username)
+				->or_where('nip', $username)
+			->group_end()
+			->group_start()
+				->where('user_password', md5($password))
+				->or_where('user_password', hash('sha256', $password))
+			->group_end()
 			->where('is_disabled', 0)
 			->get()
 			->row();
@@ -135,8 +148,8 @@ class Sso extends CI_Controller {
 		}
 
 		if(empty($userdata)){
-			$alert = urlencode("Username/Password salah !");
-			redirect("$redirect_back/?client_id=$client_id&alert=$alert");
+			$this->session->set_flashdata('error', "Username/Password salah !");
+			redirect($redirect_back.'?'.implode('&', $valid_params));
 		}
 
 		$appdata = $this->db
@@ -147,12 +160,12 @@ class Sso extends CI_Controller {
 		->row();
 
 		if(empty($appdata)){
-			$alert = urlencode("Unauthorized access !");
-			redirect("$redirect_back/?client_id=$client_id&alert=$alert");
+			$this->session->set_flashdata('error', "Unauthorized access !");
+			redirect($redirect_back);
 		}
 		if(empty($appdata->client_secret) || empty($appdata->domain) || empty($appdata->callback_uri)){
-			$alert = urlencode("Invalid Configuration !");
-			redirect("$redirect_back/?client_id=$client_id&alert=$alert");
+			$this->session->set_flashdata('error', "Invalid Configuration, contact administrator !");
+			redirect($redirect_back);
 		}
 
 		//check user access to the app
@@ -171,8 +184,8 @@ class Sso extends CI_Controller {
 		}
 
 		// if(empty($permissions)){
-		// 	$alert = urlencode("You do not have access to this application !");
-		// 	redirect("$redirect_back/?client_id=$client_id&alert=$alert");
+		// 	$this->session->set_flashdata('error', "You do not have access to this application !");
+		// 	redirect($redirect_back.'?'.implode('&', $valid_params));
 		// }
 
 		$code_length = 64;
@@ -192,7 +205,7 @@ class Sso extends CI_Controller {
 	}
 
 	public function get_token(){
-		$post = $this->input->post();
+		$post = $this->input->post(NULL, TRUE);
 
 		if(empty($post['code']) || empty($post['verifier'])){
 			http_response_code(401);exit;
@@ -269,7 +282,7 @@ class Sso extends CI_Controller {
 	}
 
 	public function authorize(){
-		$post = $this->input->post();
+		$post = $this->input->post(NULL, TRUE);
 
 		if(empty($post['client_id'])){
 			http_response_code(401);exit;
@@ -310,7 +323,7 @@ class Sso extends CI_Controller {
 					'nbf' => $iat,
 					'exp' => $iat + $this->access_age,
 					'nip' => $decoded->nip
-				);
+				);       
 		
 				$access_token = JWT::encode($payload, $appdata->client_secret, 'HS256');
 				$response['access_token'] = $access_token;
@@ -343,5 +356,176 @@ class Sso extends CI_Controller {
 			// provided key ID in key/key-array is empty or invalid.
 			http_response_code(500);exit;
 		}
+	}
+
+	public function forgot_password(){
+		$get = $this->input->get(NULL, TRUE);
+
+		$client_home = $this->get_client_home($get['client_id']);
+		if(empty($client_home)){
+			$this->session->set_flashdata('error', "Unauthorized access !");
+			$this->load->view('sso/v_forgot_pass');
+		}
+
+		$this->session->set_flashdata('client_home', $client_home);
+		$this->load->view('sso/v_forgot_pass');
+	}
+
+	public function do_forgot_password(){
+		$post = $this->input->post(NULL, TRUE);
+
+		$client_id = $post['client_id'];
+		$redirect_back_uri = "sso/forgot_password?client_id=$client_id";
+
+		if(empty($post['username'])){
+			$this->session->set_flashdata('error', 'Username harus diisi !');
+			redirect($redirect_back_uri);
+		}
+
+		$username = $post['username'];
+		$user = $this->db
+		->from('user')
+		->group_start()
+			->where('user_username', $username)
+			->or_where('nip', $username)
+		->group_end()
+		// ->where('user_password', md5($password))
+		// ->where('is_disabled', 0)
+		->get()
+		->row();
+
+		if(empty($user)){
+			$this->session->set_flashdata('error', 'NIP/Email tidak ditemukan !');
+			redirect($redirect_back_uri);
+		}
+
+		if($user->is_disabled == 1){
+			$this->session->set_flashdata('error', "User $username di-nonaktifkan !");
+			redirect($redirect_back_uri);
+		}
+
+		// $reset_code = $this->forgot->get_active_resetcode($user->nip);
+		// if(!empty($reset_code)){
+		// 	$this->session->set_flashdata('alert', "An active Reset Password link is already sent to $user->user_username in the last one hour !");
+		// 	redirect($redirect_back_uri);
+		// }
+
+		$reset_code = $this->forgot->get_resetcode($user->nip);
+		$reset_url = base_url()."sso/reset_password?reset_code=$reset_code&client_id=$client_id";
+
+		$smtp_config = $this->config->item('smtp');
+		$this->load->library('email', $smtp_config);
+
+		$this->email->from($smtp_config['smtp_user'], 'Banktanah IT (No-Reply)');
+		$this->email->to($user->user_username);
+		$this->email->subject('Mawas-SSO Reset Password');
+		$email_body = "
+			<div>Here's your reset password link (valid for 1 hour):</div>
+			<div><a href='$reset_url'>Click Here</a></div>
+			<div>If you do not issue this, please contact administrator.</div>
+			";
+		$this->email->message($email_body);
+
+		if (!$this->email->send()) {
+			show_error($this->email->print_debugger());
+		}
+
+		$this->session->set_flashdata('alert', "Reset Password link has been sent to $user->user_username, this link will only valid for 1 hour !");
+
+		redirect($redirect_back_uri);
+	}
+
+	public function reset_password(){
+		$get = $this->input->get(NULL, TRUE);
+
+		$client_home = $this->get_client_home($get['client_id']);
+		if(empty($client_home)){
+			$this->session->set_flashdata('error', "Unauthorized access !");
+			$this->load->view('sso/v_reset_pass');
+		}
+
+		$this->session->set_flashdata('client_home', $client_home);
+		$this->load->view('sso/v_reset_pass');
+	}
+
+	public function do_reset_password(){
+		$post = $this->input->post(NULL, TRUE);
+
+		$redirect_back_uri = 'sso/reset_password?reset_code='.$post['reset_code'].'&client_id='.$post['client_id'];
+
+		$nip = $this->forgot->get_nip_from_resetcode($post['reset_code']);
+		if(empty($nip)){
+			$this->session->set_flashdata('error', 'Invalid/Expired reset-password-link !');
+			redirect($redirect_back_uri);
+		}
+
+		$this->form_validation->set_rules('password', '', 'required');
+		$this->form_validation->set_rules('confirm_password', '', 'required');
+
+		if($this->form_validation->run() == false){
+			$this->session->set_flashdata('error', '"Password", dan "Konfirmasi Password" harus diisi !');
+			redirect($redirect_back_uri);
+		}
+
+		$this->session->set_flashdata('pass_cache', $post['password']);
+		$this->session->set_flashdata('cpass_cache', $post['confirm_password']);
+
+		$pass = $post['password'];
+		if (strlen($pass) < 8 || strlen($pass) > 16) {
+			$this->session->set_flashdata('error', 'Password should be min 8 characters and max 16 characters');
+			redirect($redirect_back_uri);
+		}
+		if (!preg_match("/\d/", $pass)) {
+			$this->session->set_flashdata('error', 'Password should contain at least one digit');
+			redirect($redirect_back_uri);
+		}
+		if (!preg_match("/[A-Z]/", $pass)) {
+			$this->session->set_flashdata('error', 'Password should contain at least one Capital Letter');
+			redirect($redirect_back_uri);
+		}
+		if (!preg_match("/[a-z]/", $pass)) {
+			$this->session->set_flashdata('error', 'Password should contain at least one small Letter');
+			redirect($redirect_back_uri);
+		}
+		if (!preg_match("/\W/", $pass)) {
+			$this->session->set_flashdata('error', 'Password should contain at least one special character');
+			redirect($redirect_back_uri);
+		}
+		if (preg_match("/\s/", $pass)) {
+			$this->session->set_flashdata('error', 'Password should not contain any white space');
+			redirect($redirect_back_uri);
+		}
+
+		if($post['password'] != $post['confirm_password']){
+			$this->session->set_flashdata('error', '"Password" and "Confirm Password" should be same !');
+			redirect($redirect_back_uri);
+		}
+
+		$res = $this->db
+		->where('nip', $nip)
+		->update('user', [
+			'user_password' => hash('sha256', $post['password'])
+		]);
+
+		$this->session->set_flashdata('pass_cache', '');
+		$this->session->set_flashdata('cpass_cache', '');
+
+		$this->session->set_flashdata('alert', 'Password berhasil dirubah !');
+		redirect($redirect_back_uri);
+	}
+
+	private function get_client_home($client_id){
+		$app = $this->db
+		->select('domain, redirect_uri')
+		->from('apps')
+		->where('client_id', $client_id)
+		->get()
+		->row();
+
+		if(empty($app)){
+			return null;
+		}
+
+		return "$app->domain/$app->redirect_uri";
 	}
 }
