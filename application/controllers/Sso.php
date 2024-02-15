@@ -33,6 +33,9 @@ class Sso extends CI_Controller {
 		if(!empty($get['alert'])){
 			$data['alert'] = $get['alert'];
 		}
+		if(!empty($get['error'])){
+			$this->session->set_flashdata('error', $get['error']);
+		}
 
 		if(empty($get['client_id'])){
 			$data['alert'] = 'Unauthorized Access';

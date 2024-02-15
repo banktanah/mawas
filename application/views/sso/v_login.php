@@ -29,7 +29,7 @@
     <?php 
         if($this->session->flashdata('error')) { 
     ?>
-          <div class="alert alert-danger" role="alert">
+          <div class="alert alert-danger font-weight-bold text-center" role="alert">
               <?=$this->session->flashdata('error')?>
           </div>
     <?php 
