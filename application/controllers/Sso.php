@@ -288,11 +288,12 @@ class Sso extends CI_Controller {
 		$post = $this->input->post(NULL, TRUE);
 
 		if(empty($post['client_id'])){
-			http_response_code(401);exit;
-			
+			// http_response_code(401);exit;
+			header("HTTP/1.1 401 Missing client_id");exit;
 		}
 		if(empty($post['access_token']) && empty($post['refresh_token'])){
-			http_response_code(401);exit;
+			// http_response_code(401);exit;
+			header("HTTP/1.1 401 Missing both access and refresh token");exit;
 		}
 
 		$appdata = $this->db
@@ -344,7 +345,8 @@ class Sso extends CI_Controller {
 			http_response_code(500);exit;
 		} catch (SignatureInvalidException $e) {
 			// provided JWT signature verification failed.
-			http_response_code(401);exit;
+			// http_response_code(401);exit;
+			header("HTTP/1.1 401 Invalid Signature");exit;
 		} catch (BeforeValidException $e) {
 			// provided JWT is trying to be used before "nbf" claim OR
 			// provided JWT is trying to be used before "iat" claim.
