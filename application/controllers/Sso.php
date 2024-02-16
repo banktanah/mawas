@@ -288,12 +288,14 @@ class Sso extends CI_Controller {
 		$post = $this->input->post(NULL, TRUE);
 
 		if(empty($post['client_id'])){
-			// http_response_code(401);exit;
-			header("HTTP/1.1 401 Missing client_id");exit;
+			log_message('error', "Missing client_id");
+			http_response_code(401);exit;
+			// header("HTTP/1.1 401 Missing client_id");exit;
 		}
 		if(empty($post['access_token']) && empty($post['refresh_token'])){
-			// http_response_code(401);exit;
-			header("HTTP/1.1 401 Missing both access and refresh token");exit;
+			log_message('error', "No access or refresh token found");
+			http_response_code(401);exit;
+			// header("HTTP/1.1 401 Missing both access and refresh token");exit;
 		}
 
 		$appdata = $this->db
@@ -312,9 +314,9 @@ class Sso extends CI_Controller {
 			$jwt = $post['access_token'];
 		}
 
-		$now = time();
 		$decoded = null;
 		try {
+			JWT::$leeway = 60; //1 min-leeway, should not be mattered since the signature is both signed and verified here
 			$decoded = JWT::decode($jwt, new Key($appdata->client_secret, 'HS256'));
 
 			$response = ['status' => 'ok'];
@@ -345,8 +347,9 @@ class Sso extends CI_Controller {
 			http_response_code(500);exit;
 		} catch (SignatureInvalidException $e) {
 			// provided JWT signature verification failed.
-			// http_response_code(401);exit;
-			header("HTTP/1.1 401 Invalid Signature");exit;
+			log_message('error', "SignatureInvalidException for token => $jwt");
+			http_response_code(401);exit;
+			// header("HTTP/1.1 401 Invalid Signature");exit;
 		} catch (BeforeValidException $e) {
 			// provided JWT is trying to be used before "nbf" claim OR
 			// provided JWT is trying to be used before "iat" claim.
