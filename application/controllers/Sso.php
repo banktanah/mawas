@@ -31,14 +31,14 @@ class Sso extends CI_Controller {
 		$data = [];
 
 		if(!empty($get['alert'])){
-			$data['alert'] = $get['alert'];
+			$this->session->set_flashdata('alert', $get['alert']);
 		}
 		if(!empty($get['error'])){
 			$this->session->set_flashdata('error', $get['error']);
 		}
 
 		if(empty($get['client_id'])){
-			$data['alert'] = 'Unauthorized Access';
+			$this->session->set_flashdata('error', 'Unauthorized Access');
 		}else{
 			$appdata = $this->db
 			->select('apps_nama, apps_desc, domain, redirect_uri')
@@ -48,7 +48,7 @@ class Sso extends CI_Controller {
 			->row();
 
 			if(empty($appdata)){
-				$data['alert'] = 'Unauthorized Access';
+				$this->session->set_flashdata('error', 'Unauthorized Access');
 			}else{
 				$data['client_id'] = $get['client_id'];
 				$data['challenge'] = $get['challenge'];
