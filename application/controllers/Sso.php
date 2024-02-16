@@ -56,6 +56,7 @@ class Sso extends CI_Controller {
 				$data['app_name'] = $appdata->apps_nama;
 				$data['app_desc'] = $appdata->apps_desc;
 				$data['client_home'] = urlencode("$appdata->domain/$appdata->redirect_uri");
+				$data['recaptcha_site_key'] = $this->config->item('recaptcha')['site_key'];
 			}
 		}
 
@@ -66,11 +67,36 @@ class Sso extends CI_Controller {
 	{
 		$postdatas = $this->input->post(NULL, TRUE);
 		$redirect_back = 'sso';
-		$valid_params = [
-			"client_id=".$postdatas["client_id"],
-			"challenge=".$postdatas["challenge"],
-			"challenge_method=".$postdatas["challenge_method"],
-		];
+
+		/**
+		 * Recaptcha tutorial: 
+		 * https://wesleybaxterhuber.medium.com/i-finally-figured-out-googles-recaptcha-v3-8f668860f82d
+		 */
+		if(empty($postdatas['g-recaptcha-response'])){
+			$this->session->set_flashdata('error', "No recaptcha-response !");
+			redirect($redirect_back);
+		}
+
+		$client = new \GuzzleHttp\Client(); 
+		$res = $client->request('POST', 'https://www.google.com/recaptcha/api/siteverify', [
+			'form_params' => [
+				'secret' => $this->config->item('recaptcha')['secret_key'],
+				'response' => $postdatas['g-recaptcha-response']
+			]
+		]);
+		$status = $res->getStatusCode();
+		if($status != 200){
+			log_message('error', "Hitting recaptcha siteverify-api error, status-code: $status");
+			$this->session->set_flashdata('error', "Failed to verify recaptcha !");
+			redirect($redirect_back);
+		}
+		$resJson = json_decode($res->getBody()->getContents());
+		if($resJson->success == true && $resJson->action == 'submit' && $resJson->score >= 0.5) {
+			// valid submission
+		} else {
+			$this->session->set_flashdata('error', "You spamming too much, are you a bot !");
+			redirect($redirect_back);
+		}
 
 		if(empty($postdatas['client_id']) || empty($postdatas['challenge'])){
 			$this->session->set_flashdata('error', "Unauthorized access !");
@@ -88,11 +114,17 @@ class Sso extends CI_Controller {
 		$challenge = $postdatas['challenge'];
 
 		$this->form_validation->set_rules('username', '', 'required');
-		$this->form_validation->set_rules('password', '', 'required');		
+		$this->form_validation->set_rules('password', '', 'required');
+
+		$loginpage_params = [
+			"client_id=".$postdatas["client_id"],
+			"challenge=".$postdatas["challenge"],
+			"challenge_method=".$postdatas["challenge_method"],
+		];
 
 		if($this->form_validation->run() == false){
 			$this->session->set_flashdata('error', "Username/Password harus diisi !");
-			redirect($redirect_back.'?'.implode('&', $valid_params));
+			redirect($redirect_back.'?'.implode('&', $loginpage_params));
 		}
 		
 		$this->session->set_flashdata('username_cache', $postdatas['username']);
@@ -152,7 +184,7 @@ class Sso extends CI_Controller {
 
 		if(empty($userdata)){
 			$this->session->set_flashdata('error', "Username/Password salah !");
-			redirect($redirect_back.'?'.implode('&', $valid_params));
+			redirect($redirect_back.'?'.implode('&', $loginpage_params));
 		}
 
 		$appdata = $this->db
@@ -188,7 +220,7 @@ class Sso extends CI_Controller {
 
 		// if(empty($permissions)){
 		// 	$this->session->set_flashdata('error', "You do not have access to this application !");
-		// 	redirect($redirect_back.'?'.implode('&', $valid_params));
+		// 	redirect($redirect_back.'?'.implode('&', $loginpage_params));
 		// }
 
 		$code_length = 64;

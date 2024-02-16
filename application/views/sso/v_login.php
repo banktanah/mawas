@@ -13,8 +13,19 @@
   <link rel="stylesheet" href="<?php echo base_url(); ?>assets/plugins/iCheck/square/blue.css">
 
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
+
+  <script src="https://www.google.com/recaptcha/api.js"></script>
+  <style>
+    @media only screen and (max-width: 500px) {
+        .g-recaptcha {
+            transform:scale(0.77);
+            transform-origin:0 0;
+        }
+    }
+  </style>
 </head>
-<body class="hold-transition login-page bg-blue" style="overflow-y: hidden;">
+<!-- <body class="hold-transition login-page bg-blue" style="overflow-y: hidden;"> -->
+<body class="hold-transition login-page bg-blue">
   <div class="login-box" style="margin-top: 10%;">
       <div class="login-box-body">
         <img src="<?php echo base_url('gambar/logo.png') ?>" class="img-responsive">
@@ -52,7 +63,7 @@
             if(!empty($client_id)){
               $username_cache = !empty($this->session->flashdata('username_cache'))? $this->session->flashdata('username_cache'): '';
           ?>
-            <form action="<?php echo base_url().'sso/login' ?>" method="post">
+            <form id="login-form" action="<?php echo base_url().'sso/login' ?>" method="post">
               <input type="hidden" name="client_id" value="<?php echo $client_id ?>">
               <input type="hidden" name="challenge" value="<?php echo $challenge ?>">
               <input type="hidden" name="challenge_method" value="<?php echo $challenge_method ?>">
@@ -68,7 +79,15 @@
               
               <div class="row">
                 <div class="col-xs-12">
-                  <button type="submit" class="btn btn-primary btn-block btn-flat">LOGIN</button>
+                  <!-- <button type="submit" class="btn btn-primary btn-block btn-flat">LOGIN</button> -->
+                  <button 
+                    class="btn btn-primary btn-block btn-flat g-recaptcha" 
+                    data-sitekey="<?=$recaptcha_site_key?>" 
+                    data-callback="onSubmit" 
+                    data-action="submit"
+                  >
+                    LOGIN
+                  </button>
                 </div>
               </div>
 
@@ -90,6 +109,12 @@
         </div>
       </div>
   </div>
+
+  <script>
+    function onSubmit(token) {
+      document.getElementById("login-form").submit();
+    }
+  </script>
 
   <script src="<?php echo base_url(); ?>assets/bower_components/jquery/dist/jquery.min.js"></script>
   <script src="<?php echo base_url(); ?>assets/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>

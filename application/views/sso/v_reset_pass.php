@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
 </head>
 <body class="hold-transition login-page bg-blue">
-  <div class="login-box" style="margin-top: 4%;">
+  <div class="login-box" style="margin-top: 10%;">
     <div class="login-logo">
       <!-- <h3>APLIKASI MONITORING KEUANGAN</h3>      -->
     </div>
@@ -79,7 +79,7 @@
             </div>
           </div>
 
-          <div class="row text-center">
+          <div class="row text-center" style="margin-top: 10px;">
             <span>Back to&nbsp;</span>
             <a class="cssbuttongo" href="<?=$this->session->flashdata('client_home')?>">
                 <span>Login</span>

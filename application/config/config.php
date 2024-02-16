@@ -559,3 +559,8 @@ $config['sso'] = [
     'access_token_age' => (60 * 3),
     'refresh_token_age' => (60 * 60 * 12),
 ];
+
+$config['recaptcha'] = [
+    'site_key' => $_ENV['RECAPTCHA_SITE_KEY'],
+    'secret_key' => $_ENV['RECAPTCHA_SECRET_KEY']
+];
