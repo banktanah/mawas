@@ -15,17 +15,8 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
 
   <script src="https://www.google.com/recaptcha/api.js"></script>
-  <style>
-    @media only screen and (max-width: 500px) {
-        .g-recaptcha {
-            transform:scale(0.77);
-            transform-origin:0 0;
-        }
-    }
-  </style>
 </head>
-<!-- <body class="hold-transition login-page bg-blue" style="overflow-y: hidden;"> -->
-<body class="hold-transition login-page bg-blue">
+<body class="hold-transition login-page bg-blue" style="overflow-y: hidden;">
   <div class="login-box" style="margin-top: 10%;">
       <div class="login-box-body">
         <img src="<?php echo base_url('gambar/logo.png') ?>" class="img-responsive">
