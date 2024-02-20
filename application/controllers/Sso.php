@@ -348,7 +348,7 @@ class Sso extends CI_Controller {
 
 		$decoded = null;
 		try {
-			JWT::$leeway = 60; //1 min-leeway, should not be mattered since the signature is both signed and verified here
+			// JWT::$leeway = 60; //1 min-leeway, should not be mattered since the signature is both signed and verified here
 			$decoded = JWT::decode($jwt, new Key($appdata->client_secret, 'HS256'));
 
 			$response = ['status' => 'ok'];
