@@ -389,7 +389,11 @@ class Sso extends CI_Controller {
 			http_response_code(401);exit;
 		} catch (ExpiredException $e) {
 			// provided JWT is trying to be used after "exp" claim.
-			log_message('error', "JWT is used after exp or iat for token => $jwt");
+			if($is_refresh_token){
+				log_message('error', "refresh-token is used after exp for token => $jwt");
+			}else{
+				log_message('error', "access-token is used after exp for token => $jwt");
+			}
 			header("HTTP/1.1 401 Expired");exit;
 		} catch (UnexpectedValueException $e) {
 			// provided JWT is malformed OR
