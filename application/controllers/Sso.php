@@ -385,9 +385,11 @@ class Sso extends CI_Controller {
 		} catch (BeforeValidException $e) {
 			// provided JWT is trying to be used before "nbf" claim OR
 			// provided JWT is trying to be used before "iat" claim.
+			log_message('error', "JWT is used before nbf or iat for token => $jwt");
 			http_response_code(401);exit;
 		} catch (ExpiredException $e) {
 			// provided JWT is trying to be used after "exp" claim.
+			log_message('error', "JWT is used after exp or iat for token => $jwt");
 			header("HTTP/1.1 401 Expired");exit;
 		} catch (UnexpectedValueException $e) {
 			// provided JWT is malformed OR
