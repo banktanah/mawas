@@ -323,13 +323,11 @@ class Sso extends CI_Controller {
 			log_message('error', "Missing client_id");
 			http_response_code(401);
 			echo 'Missing client_id';
-			// header("HTTP/1.1 401 Missing client_id");exit;
 		}
 		if(empty($post['access_token']) && empty($post['refresh_token'])){
 			log_message('error', "No access or refresh token found");
 			http_response_code(401);
 			echo 'No access or refresh token found';
-			// header("HTTP/1.1 401 Missing both access and refresh token");exit;
 		}
 
 		$appdata = $this->db
@@ -382,29 +380,18 @@ class Sso extends CI_Controller {
 		} catch (SignatureInvalidException $e) {
 			// provided JWT signature verification failed.
 			log_message('error', "SignatureInvalidException for token => $jwt");
-			// http_response_code(403);exit;
-			// header("HTTP/1.1 401 Invalid Signature");exit;
 			http_response_code(401);
 			echo 'Invalid Signature';
 		} catch (BeforeValidException $e) {
 			// provided JWT is trying to be used before "nbf" claim OR
 			// provided JWT is trying to be used before "iat" claim.
 			log_message('error', "JWT is used before nbf or iat for token => $jwt");
-			// http_response_code(403);exit;
 			http_response_code(401);
 			echo 'JWT is used before nbf or iat';
 		} catch (ExpiredException $e) {
 			// provided JWT is trying to be used after "exp" claim.
-			if($is_refresh_token){
-				log_message('error', "refresh-token is used after exp for token => $jwt");
-			}else{
-				log_message('error', "access-token is used after exp for token => $jwt");
-			}
-			// header("HTTP/1.1 401 Expired");exit;
 			http_response_code(401);
-			// header($_SERVER['SERVER_PROTOCOL'].' 401 Expired');
 			echo 'expired';
-			exit;
 		} catch (UnexpectedValueException $e) {
 			// provided JWT is malformed OR
 			// provided JWT is missing an algorithm / using an unsupported algorithm OR
