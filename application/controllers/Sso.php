@@ -397,7 +397,7 @@ class Sso extends CI_Controller {
 			// header("HTTP/1.1 401 Expired");exit;
 			// http_response_code(401);
 			header($_SERVER['SERVER_PROTOCOL'].' 401 Expired');
-			echo 'expired';exit;
+			echo 'expired-test';exit;
 		} catch (UnexpectedValueException $e) {
 			// provided JWT is malformed OR
 			// provided JWT is missing an algorithm / using an unsupported algorithm OR
