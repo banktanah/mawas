@@ -323,11 +323,13 @@ class Sso extends CI_Controller {
 			log_message('error', "Missing client_id");
 			http_response_code(401);
 			echo 'Missing client_id';
+			exit;
 		}
 		if(empty($post['access_token']) && empty($post['refresh_token'])){
 			log_message('error', "No access or refresh token found");
 			http_response_code(401);
 			echo 'No access or refresh token found';
+			exit;
 		}
 
 		$appdata = $this->db
@@ -368,36 +370,43 @@ class Sso extends CI_Controller {
 			}
 	
 			echo json_encode($response);
+			exit;
 		} catch (InvalidArgumentException $e) {
 			// provided key/key-array is empty or malformed.
-			http_response_code(500);exit;
+			http_response_code(500);
+			exit;
 		} catch (DomainException $e) {
 			// provided algorithm is unsupported OR
 			// provided key is invalid OR
 			// unknown error thrown in openSSL or libsodium OR
 			// libsodium is required but not available.
-			http_response_code(500);exit;
+			http_response_code(500);
+			exit;
 		} catch (SignatureInvalidException $e) {
 			// provided JWT signature verification failed.
 			log_message('error', "SignatureInvalidException for token => $jwt");
 			http_response_code(401);
 			echo 'Invalid Signature';
+			exit;
 		} catch (BeforeValidException $e) {
 			// provided JWT is trying to be used before "nbf" claim OR
 			// provided JWT is trying to be used before "iat" claim.
 			log_message('error', "JWT is used before nbf or iat for token => $jwt");
 			http_response_code(401);
 			echo 'JWT is used before nbf or iat';
+			exit;
 		} catch (ExpiredException $e) {
 			// provided JWT is trying to be used after "exp" claim.
 			http_response_code(401);
 			echo 'expired';
+			exit;
 		} catch (UnexpectedValueException $e) {
 			// provided JWT is malformed OR
 			// provided JWT is missing an algorithm / using an unsupported algorithm OR
 			// provided JWT algorithm does not match provided key OR
 			// provided key ID in key/key-array is empty or invalid.
-			http_response_code(500);exit;
+			http_response_code(500);
+			exit;
 		}
 	}
 
