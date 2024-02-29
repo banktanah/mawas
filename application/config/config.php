@@ -23,7 +23,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | a PHP script and you can easily do that on your own.
 |
 */
-$config['base_url'] = 'http://'.$_SERVER['HTTP_HOST'].'/mawas';
+$config['base_url'] = 'http://'.$_SERVER['HTTP_HOST'].$_ENV['BASE_URI'];
 
 /*
 |--------------------------------------------------------------------------
@@ -223,7 +223,7 @@ $config['allow_get_array'] = TRUE;
 | your log files will fill up very fast.
 |
 */
-$config['log_threshold'] = 0;
+$config['log_threshold'] = 1;
 
 /*
 |--------------------------------------------------------------------------
@@ -248,7 +248,7 @@ $config['log_path'] = '';
 | Note: Leaving it blank will default to 'php'.
 |
 */
-$config['log_file_extension'] = '';
+$config['log_file_extension'] = 'txt';
 
 /*
 |--------------------------------------------------------------------------
@@ -324,7 +324,7 @@ $config['cache_query_string'] = FALSE;
 | https://codeigniter.com/user_guide/libraries/encryption.html
 |
 */
-$config['encryption_key'] = 'CMSwebsitemalasngodingdengancodeigniter123';
+$config['encryption_key'] = 'df58f41935d1400bb758e189a809e0ae';
 
 /*
 |--------------------------------------------------------------------------
@@ -521,3 +521,46 @@ $config['rewrite_short_tags'] = FALSE;
 | Array:		array('10.0.1.200', '192.168.5.0/24')
 */
 $config['proxy_ips'] = '';
+
+/**
+ * SMTP Configurations
+ */
+ $config['smtp'] = [
+    'protocol' => 'smtp',
+    'smtp_host' => $_ENV['SMTP_HOST'],
+    'smtp_crypto' => 'ssl',
+    'smtp_port' => $_ENV['SMTP_PORT'],
+    'smtp_user' => $_ENV['SMTP_USER'],
+    'smtp_pass' => $_ENV['SMTP_PASS'],
+    'charset'   => 'iso-8859-1',
+    'wordwrap' => TRUE,
+    'smtp_timeout' => 30,
+    'newline' => "\r\n",
+    'crlf' => "\r\n",
+    'mailtype'  => 'html'
+];
+
+/**
+ * SSO Configs
+ * 
+ * 'method' => db | smtp
+ * db: login using credential in mawas db
+ * smtp: login using smtp credential
+ * 
+ */
+$config['sso'] = [
+    'method' => $_ENV['SSO_METHOD'],
+    'smtp' => [
+        'smtp_host' => $_ENV['SSO_SMTP_HOST'],
+        'smtp_port' => $_ENV['SSO_SMTP_PORT'],
+        'smtp_crypto' => 'ssl',
+        'smtp_timeout' => 30,
+    ],
+    'access_token_age' => (60 * 3),
+    'refresh_token_age' => (60 * 60 * 12),
+];
+
+$config['recaptcha'] = [
+    'site_key' => $_ENV['RECAPTCHA_SITE_KEY'],
+    'secret_key' => $_ENV['RECAPTCHA_SECRET_KEY']
+];

@@ -76,15 +76,15 @@ $query_builder = TRUE;
 $db['default'] = array(
 	'dsn'	=> '',
 	//localhost
-	// 'hostname' => 'localhost',
-	// 'username' => 'root',
-	// 'password' => '',
+	'hostname' => $_ENV['DB_HOSTNAME'],
+	'username' => $_ENV['DB_USERNAME'],
+	'password' => $_ENV['DB_PASSWORD'],
 
 	//prod server
-	'hostname' => '10.254.42.21',
-	'username' => 'admin_mawas',
-	'password' => 'Banktanah2022@@',
-	'database' => 'db_mawas',
+	// 'hostname' => '10.254.42.21',
+	// 'username' => 'admin_mawas',
+	// 'password' => 'Banktanah2022@@',
+	'database' => $_ENV['DB_NAME'],
 	'dbdriver' => 'mysqli',
 	'dbprefix' => '',
 	'pconnect' => FALSE,
