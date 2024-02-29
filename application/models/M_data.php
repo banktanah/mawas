@@ -12,7 +12,7 @@ class M_data extends CI_Model{
 
 	function cek_login_v2($username, $password){
 		return $this->db
-			->select('user_id')
+			->select('*')
 			->from('user')
 			->group_start()
 				->where('user_username', $username)
