@@ -9,6 +9,23 @@ class M_data extends CI_Model{
 	function cek_login($table,$where){
 		return $this->db->get_where($table,$where);
 	}
+
+	function cek_login_v2($username, $password){
+		return $this->db
+			->select('user_id')
+			->from('user')
+			->group_start()
+				->where('user_username', $username)
+				->or_where('nip', $username)
+			->group_end()
+			->group_start()
+				->where('user_password', md5($password))
+				->or_where('user_password', hash('sha256', $password))
+			->group_end()
+			->where('is_disabled', 0)
+			->get()
+			->row();
+	}
 	
 	// FUNGSI CRUD
 	// fungsi untuk mengambil data dari database
