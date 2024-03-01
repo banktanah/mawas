@@ -501,7 +501,8 @@ class Sso extends CI_Controller {
 	}
 
 	public function do_reset_password(){
-		$post = $this->input->post(NULL, TRUE);
+		// $post = $this->input->post(NULL, TRUE);
+		$post = $this->input->post(); //causing missing special characters
 
 		$redirect_back_uri = 'sso/reset_password?reset_code='.$post['reset_code'].'&client_id='.$post['client_id'];
 
