@@ -130,25 +130,13 @@ class Sso extends CI_Controller {
 		$this->session->set_flashdata('username_cache', $postdatas['username']);
 
 		$username = $postdatas['username'];
-		$password = $postdatas['password'];
+		$password = $this->input->post('password');
 
 		$userdata = null;
 
 		if($this->login_method == SSO_METHOD_DB){ //login using mawas-db
-			$userdata = $this->db
-			->select('user_id')
-			->from('user')
-			->group_start()
-				->where('user_username', $username)
-				->or_where('nip', $username)
-			->group_end()
-			->group_start()
-				->where('user_password', md5($password))
-				->or_where('user_password', hash('sha256', $password))
-			->group_end()
-			->where('is_disabled', 0)
-			->get()
-			->row();
+			$this->load->model('m_data');
+			$userdata = $this->m_data->cek_login_v2($username, $password);
 		}else if($this->login_method == SSO_METHOD_SMTP){ //login using mailservice
 			$smtp_config = $this->config->item('sso')['smtp'];
 			try{

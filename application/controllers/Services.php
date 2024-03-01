@@ -31,10 +31,12 @@ class Services extends CI_Controller {
 			'user_password' => $password
 		);
 
-		$this->load->model('m_data');
-		$cek = $this->m_data->cek_login('user',$where)->num_rows();
-		if($cek > 0){				
-			$data = $this->m_data->cek_login('user',$where)->row();
+		// $this->load->model('m_data');
+		// $cek = $this->m_data->cek_login('user',$where)->num_rows();
+		// if($cek > 0){				
+        $data = $this->m_data->cek_login_v2($username, $request['password']);
+        if(!empty($data)){
+			// $data = $this->m_data->cek_login('user',$where)->row();
             $pegawai_id = $data->pegawai_id;
 
             $kariers = $this->db->select('*')
