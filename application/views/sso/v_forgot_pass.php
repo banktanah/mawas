@@ -13,8 +13,13 @@
   <link rel="stylesheet" href="<?php echo base_url(); ?>assets/plugins/iCheck/square/blue.css">
 
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
+  <style>
+    .bg-gradient {
+      background: linear-gradient(140deg, #1a540d 0%, #40b825 70%, #5ef73b 100%);
+    }
+  </style>
 </head>
-<body class="hold-transition login-page bg-blue">
+<body class="hold-transition login-page bg-gradient">
   <div class="login-box" style="margin-top: 10%;">
     <div class="login-logo">
       <!-- <h3>APLIKASI MONITORING KEUANGAN</h3>      -->
@@ -26,7 +31,7 @@
     } 
     ?>
 
-    <div class="login-box-body">
+    <div class="login-box-body" style="border-radius: 15px;">
       <img src="<?php echo base_url('gambar/logo.png') ?>" class="img-responsive">
       <div style="position: relative; top: -50px;">
         <div class="col-12 text-center">

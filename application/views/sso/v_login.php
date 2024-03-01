@@ -15,10 +15,15 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
 
   <script src="https://www.google.com/recaptcha/api.js"></script>
+  <style>
+    .bg-gradient {
+      background: linear-gradient(140deg, #1a540d 0%, #40b825 70%, #5ef73b 100%);
+    }
+  </style>
 </head>
-<body class="hold-transition login-page bg-blue" style="overflow-y: hidden;">
+<body class="hold-transition login-page bg-gradient" style="overflow-y: hidden;">
   <div class="login-box" style="margin-top: 10%;">
-      <div class="login-box-body">
+      <div class="login-box-body" style="border-radius: 15px;">
         <img src="<?php echo base_url('gambar/logo.png') ?>" class="img-responsive">
 
         <div style="position: relative; top: -50px;">
