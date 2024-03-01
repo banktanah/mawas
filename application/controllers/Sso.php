@@ -130,7 +130,7 @@ class Sso extends CI_Controller {
 		$this->session->set_flashdata('username_cache', $postdatas['username']);
 
 		$username = $postdatas['username'];
-		$password = $postdatas['password'];
+		$password = $this->input->post('password');
 
 		$userdata = null;
 
