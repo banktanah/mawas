@@ -15,13 +15,10 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
 
   <script src="https://www.google.com/recaptcha/api.js"></script>
-  <style>
-    .bg-gradient {
-      background: linear-gradient(140deg, #1a540d 0%, #40b825 70%, #5ef73b 100%);
-    }
-  </style>
+  <?php include('_style.php') ?>
 </head>
-<body class="hold-transition login-page bg-gradient" style="overflow-y: hidden;">
+<!-- <body class="hold-transition login-page bg-gradient" style="overflow-y: hidden;"> -->
+<body class="hold-transition login-page with-bg-img" style="overflow-y: hidden;">
   <div class="login-box" style="margin-top: 10%;">
       <div class="login-box-body" style="border-radius: 15px;">
         <img src="<?php echo base_url('gambar/logo.png') ?>" class="img-responsive">
@@ -63,6 +60,7 @@
               <input type="hidden" name="client_id" value="<?php echo $client_id ?>">
               <input type="hidden" name="challenge" value="<?php echo $challenge ?>">
               <input type="hidden" name="challenge_method" value="<?php echo $challenge_method ?>">
+              <input type="hidden" name="redirect" value="<?php echo $redirect ?>">
               <div class="form-group has-feedback">
                 <input type="text" class="form-control" placeholder="NIP/Email" name="username" value="<?=$username_cache?>">
                 <span class="glyphicon glyphicon-user form-control-feedback"></span>

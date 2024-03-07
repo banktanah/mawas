@@ -13,13 +13,10 @@
   <link rel="stylesheet" href="<?php echo base_url(); ?>assets/plugins/iCheck/square/blue.css">
 
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
-  <style>
-    .bg-gradient {
-      background: linear-gradient(140deg, #1a540d 0%, #40b825 70%, #5ef73b 100%);
-    }
-  </style>
+  <?php include('_style.php') ?>
 </head>
-<body class="hold-transition login-page bg-gradient">
+<!-- <body class="hold-transition login-page bg-gradient"> -->
+<body class="hold-transition login-page with-bg-img">
   <div class="login-box" style="margin-top: 10%;">
     <div class="login-logo">
       <!-- <h3>APLIKASI MONITORING KEUANGAN</h3>      -->
