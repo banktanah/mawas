@@ -23,6 +23,7 @@ class Sso extends CI_Controller {
 		$this->refresh_age = (int)$sso_config['refresh_token_age'];
 
 		$this->load->model('Forgotpasswordmodel', 'forgot');
+		$this->load->model('user_model');
 	}
 
 	public function index()
@@ -57,6 +58,7 @@ class Sso extends CI_Controller {
 				$data['app_desc'] = $appdata->apps_desc;
 				$data['client_home'] = urlencode("$appdata->domain/$appdata->redirect_uri");
 				$data['recaptcha_site_key'] = $this->config->item('recaptcha')['site_key'];
+				$data['redirect'] = !empty($get['redirect'])? $get['redirect']: '';
 			}
 		}
 
@@ -135,8 +137,7 @@ class Sso extends CI_Controller {
 		$userdata = null;
 
 		if($this->login_method == SSO_METHOD_DB){ //login using mawas-db
-			$this->load->model('m_data');
-			$userdata = $this->m_data->cek_login_v2($username, $password);
+			$userdata = $this->user_model->do_login($username, $password);
 		}else if($this->login_method == SSO_METHOD_SMTP){ //login using mailservice
 			$smtp_config = $this->config->item('sso')['smtp'];
 			try{
@@ -192,24 +193,26 @@ class Sso extends CI_Controller {
 		}
 
 		//check user access to the app
-		$permissions = [];
-		$accessdatas = $this->db
-		->from('akses')
-		->where([
-			'user_id' => $userdata->user_id,
-			'apps_id' => $appdata->apps_id
-		])
-		->get()
-		->result();
+		// $permissions = [];
+		// $accessdatas = $this->db
+		// ->from('akses')
+		// ->where([
+		// 	'user_id' => $userdata->user_id,
+		// 	'apps_id' => $appdata->apps_id
+		// ])
+		// ->get()
+		// ->result();
 
-		foreach($accessdatas as $loop){
-			$permissions []= $loop->akses_role;
-		}
-
-		// if(empty($permissions)){
-		// 	$this->session->set_flashdata('error', "You do not have access to this application !");
-		// 	redirect($redirect_back.'?'.implode('&', $loginpage_params));
+		// foreach($accessdatas as $loop){
+		// 	$permissions []= $loop->akses_role;
 		// }
+
+		$roles = $this->user_model->get_roles($userdata->user_id, $client_id);
+
+		if(empty($roles)){
+			$this->session->set_flashdata('error', "You do not have access to this application !");
+			redirect($redirect_back.'?'.implode('&', $loginpage_params));
+		}
 
 		$code_length = 64;
 		$code = bin2hex(random_bytes(($code_length-($code_length%2))/2));
@@ -224,7 +227,14 @@ class Sso extends CI_Controller {
 		]);
 		
 		$callback_url = $appdata->domain.$appdata->callback_uri;
-		redirect("$callback_url?code=$code");
+
+		$params = ["code=$code"];
+		if(!empty($postdatas['redirect'])){
+			$params []= 'redirect='.$postdatas['redirect'];
+		}
+		$url_params = implode('&', $params);
+
+		redirect("$callback_url?$url_params");
 	}
 
 	public function get_token(){

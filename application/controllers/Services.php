@@ -10,7 +10,8 @@ class Services extends CI_Controller {
 
 		date_default_timezone_set('Asia/Jakarta');
 
-		$this->load->model('m_data');
+		// $this->load->model('m_data');
+		$this->load->model('user_model');
 		$this->load->library('pdf');
 	}
 
@@ -34,7 +35,7 @@ class Services extends CI_Controller {
 		// $this->load->model('m_data');
 		// $cek = $this->m_data->cek_login('user',$where)->num_rows();
 		// if($cek > 0){				
-        $data = $this->m_data->cek_login_v2($username, $request['password']);
+        $data = $this->user_model->do_login($username, $request['password']);
         if(!empty($data)){
 			// $data = $this->m_data->cek_login('user',$where)->row();
             $pegawai_id = $data->pegawai_id;

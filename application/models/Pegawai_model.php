@@ -1,10 +1,5 @@
 <?php 
-
-// WWW.MALASNGODING.COM === Author : Diki Alfarabi Hadi
-// Model yang terstruktur. agar bisa digunakan berulang kali untuk membuat CRUD. 
-// Sehingga proses pembuatan CRUD menjadi lebih cepat dan efisien.
-
-class M_data extends CI_Model{
+class Pegawai_model extends CI_Model{
 	
 	function cek_login($table,$where){
 		return $this->db->get_where($table,$where);
