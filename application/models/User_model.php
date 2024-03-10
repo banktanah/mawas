@@ -1,9 +1,5 @@
 <?php 
 
-// WWW.MALASNGODING.COM === Author : Diki Alfarabi Hadi
-// Model yang terstruktur. agar bisa digunakan berulang kali untuk membuat CRUD. 
-// Sehingga proses pembuatan CRUD menjadi lebih cepat dan efisien.
-
 class User_model extends CI_Model{
 	
 	function do_login($username, $password){
@@ -111,6 +107,27 @@ class User_model extends CI_Model{
 		}
 
 		return $roles;
+	}
+
+	public function get_by_id($user_id){
+		return $this->db
+			->select('*')
+			->from('user')
+			->where('user_id', $user_id)
+			->get()
+			->row();
+	}
+
+	public function get_by_email_or_nip($email_or_nip){
+		return $this->db
+			->select('*')
+			->from('user')
+			->group_start()
+				->where('user_username', $email_or_nip)
+				->or_where('nip', $email_or_nip)
+			->group_end()
+			->get()
+			->row();
 	}
 	
 }

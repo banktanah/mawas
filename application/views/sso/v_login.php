@@ -60,6 +60,7 @@
               <input type="hidden" name="client_id" value="<?php echo $client_id ?>">
               <input type="hidden" name="challenge" value="<?php echo $challenge ?>">
               <input type="hidden" name="challenge_method" value="<?php echo $challenge_method ?>">
+              <input type="hidden" name="shared_sess_id" value="<?php echo $shared_sess_id ?>">
               <input type="hidden" name="redirect" value="<?php echo $redirect ?>">
               <div class="form-group has-feedback">
                 <input type="text" class="form-control" placeholder="NIP/Email" name="username" value="<?=$username_cache?>">

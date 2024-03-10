@@ -378,7 +378,7 @@ $config['encryption_key'] = 'df58f41935d1400bb758e189a809e0ae';
 |
 */
 $config['sess_driver'] = 'files';
-$config['sess_cookie_name'] = 'ci_session';
+$config['sess_cookie_name'] = 'mawas_session';
 $config['sess_expiration'] = 7200;
 $config['sess_save_path'] = NULL;
 $config['sess_match_ip'] = FALSE;
@@ -557,7 +557,8 @@ $config['sso'] = [
         'smtp_timeout' => 30,
     ],
     'access_token_age' => (60 * 3),
-    'refresh_token_age' => (60 * 60 * 12),
+    'refresh_token_age' => (60 * 60 * 2),
+    'server_secret' => $_ENV['SSO_SERVER_SECRET']
 ];
 
 $config['recaptcha'] = [

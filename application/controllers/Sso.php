@@ -14,6 +14,7 @@ class Sso extends CI_Controller {
 	private $login_method;
 	private $access_age;
 	private $refresh_age;
+	private $server_secret;
 
 	function __construct(){
 		parent::__construct();
@@ -21,13 +22,15 @@ class Sso extends CI_Controller {
 		$this->login_method = $sso_config['method'];
 		$this->access_age = (int)$sso_config['access_token_age'];
 		$this->refresh_age = (int)$sso_config['refresh_token_age'];
+		$this->server_secret = $sso_config['server_secret'];
 
 		$this->load->model('Forgotpasswordmodel', 'forgot');
 		$this->load->model('user_model');
+		$this->load->model('app_model');
+		$this->load->model('sharedsession_model');
 	}
 
-	public function index()
-	{
+	public function index(){
 		$get = $this->input->get(NULL, TRUE);
 		$data = [];
 
@@ -41,12 +44,7 @@ class Sso extends CI_Controller {
 		if(empty($get['client_id'])){
 			$this->session->set_flashdata('error', 'Unauthorized Access');
 		}else{
-			$appdata = $this->db
-			->select('apps_nama, apps_desc, domain, redirect_uri')
-			->from('apps')
-			->where('client_id', $get['client_id'])
-			->get()
-			->row();
+			$appdata = $this->app_model->get_by_client_id($get['client_id']);
 
 			if(empty($appdata)){
 				$this->session->set_flashdata('error', 'Unauthorized Access');
@@ -58,6 +56,7 @@ class Sso extends CI_Controller {
 				$data['app_desc'] = $appdata->apps_desc;
 				$data['client_home'] = urlencode("$appdata->domain/$appdata->redirect_uri");
 				$data['recaptcha_site_key'] = $this->config->item('recaptcha')['site_key'];
+				$data['shared_sess_id'] = !empty($get['shared_sess_id'])? $get['shared_sess_id']: '';
 				$data['redirect'] = !empty($get['redirect'])? $get['redirect']: '';
 			}
 		}
@@ -65,8 +64,7 @@ class Sso extends CI_Controller {
 		$this->load->view('sso/v_login', $data);
 	}
 	
-	public function login()
-	{
+	public function login(){
 		$postdatas = $this->input->post(NULL, TRUE);
 		$redirect_back = 'sso';
 
@@ -96,7 +94,7 @@ class Sso extends CI_Controller {
 		if($resJson->success == true && $resJson->action == 'submit' && $resJson->score >= 0.5) {
 			// valid submission
 		} else {
-			$this->session->set_flashdata('error', "You spamming too much, are you a bot !");
+			$this->session->set_flashdata('error', "You spamming too much, are you a bot?");
 			redirect($redirect_back);
 		}
 
@@ -154,13 +152,8 @@ class Sso extends CI_Controller {
 				// was successful, or throws an exception otherwise
 				$validCredentials = $mail->SmtpConnect();
 				if($validCredentials){
-					$userdata = $this->db
-					->select('user_id')
-					->from('user')
-					->where('user_username', $username)
-					->where('is_disabled', 0)
-					->get()
-					->row();
+					$userdata = $this->user_model->get_by_email_or_nip($username);
+					$userdata = !empty($userdata)&&$userdata->is_disabled==0? $userdata: null;
 				}
 			}catch(PHPMailerException $e){
 				if($e->getMessage() == 'SMTP Error: Could not authenticate.'){
@@ -176,12 +169,50 @@ class Sso extends CI_Controller {
 			redirect($redirect_back.'?'.implode('&', $loginpage_params));
 		}
 
-		$appdata = $this->db
-		->select('apps_id, client_secret, domain, callback_uri, redirect_uri')
-		->from('apps')
-		->where('client_id', $client_id)
-		->get()
-		->row();
+		$this->sharedsession_model->create_session($postdatas["shared_sess_id"], $userdata->user_id);
+
+		$this->return_auth_code_to_client(
+			$client_id,
+			$userdata->user_id,
+			$challenge,
+			$challenge_method,
+			$loginpage_params
+		);
+	}
+	
+	public function login_with_shared_session(){
+		$shared_session = isset($_COOKIE['mwsst'])? $_COOKIE['mwsst']: null;
+
+		if(empty($shared_session))return;
+
+		$get = $this->input->get(NULL, TRUE);
+
+		try{
+			$payload = $this->verify_token($shared_session);
+
+			$userdata = $this->user_model->get_by_email_or_nip($payload->nip);
+
+			$this->return_auth_code_to_client(
+				$get['client_id'],
+				$userdata->user_id,
+				$get['challenge'],
+				$get['challenge_method']
+			);
+		}catch(Exception $e){
+			// it just means that the token is invalid/expired
+		}
+	}
+
+	private function return_auth_code_to_client(
+		$client_id, 
+		$user_id,
+		$challenge,
+		$challenge_method,
+		$loginpage_params = []
+	){
+		$redirect_back = 'sso';
+
+		$appdata = $this->app_model->get_by_client_id($client_id);
 
 		if(empty($appdata)){
 			$this->session->set_flashdata('error', "Unauthorized access !");
@@ -207,7 +238,7 @@ class Sso extends CI_Controller {
 		// 	$permissions []= $loop->akses_role;
 		// }
 
-		$roles = $this->user_model->get_roles($userdata->user_id, $client_id);
+		$roles = $this->user_model->get_roles($user_id, $client_id);
 
 		if(empty($roles)){
 			$this->session->set_flashdata('error', "You do not have access to this application !");
@@ -217,10 +248,10 @@ class Sso extends CI_Controller {
 		$code_length = 64;
 		$code = bin2hex(random_bytes(($code_length-($code_length%2))/2));
 
-		$this->db->insert('sso_otp', [
+		$this->db->insert('sso_otc', [
 			'code' => $code,
 			'client_id' => $client_id,
-			'user_id' => $userdata->user_id,
+			'user_id' => $user_id,
 			'challenge' => $challenge,
 			'challenge_method' => $challenge_method,
 			'timestamp' => (time() + (60 * 5))
@@ -244,77 +275,68 @@ class Sso extends CI_Controller {
 			http_response_code(401);exit;
 		}
 
-		$otp = $this->db
-		->from('sso_otp')
+		$otc = $this->db
+		->from('sso_otc')
 		->where('code', $post['code'])
 		->get()
 		->row();
 
-		if(empty($otp)){
+		if(empty($otc)){
 			http_response_code(401);exit;
 		}
 
 		$res = $this->db
-		->from('sso_otp')
+		->from('sso_otc')
 		->where('code', $post['code'])
     	->delete();
 
 		//check PKCE
 		$verifier = $post['verifier'];
-		if($otp->challenge_method == 's256'){
+		if($otc->challenge_method == 's256'){
 			$verifier = base64_encode(hash('sha256', $verifier));
 		}
 
-		if($verifier != $otp->challenge){
+		if($verifier != $otc->challenge){
 			http_response_code(401);exit;
 		}
 
-		if(time() > $otp->timestamp){
+		if(time() > $otc->timestamp){
 			http_response_code(401);exit;
 		}
 
-		$userdata = $this->db
-		->select('nip, user_nama')
-		->from('user')
-		->where('user_id', $otp->user_id)
-		->get()
-		->row();
-
-		$appdata = $this->db
-		->select('client_secret')
-		->from('apps')
-		->where('client_id', $otp->client_id)
-		->get()
-		->row();
-
-		$iat = time();
-		$payload = array(
-			'iss' => base_url(),
-			'aud' => $otp->client_id,
-			'iat' => $iat,
-			'nbf' => $iat,
-			'exp' => $iat + $this->access_age,
-			'nip' => $userdata->nip
-		);
-
-		$payload_refresh = $payload;
-		$payload_refresh['exp'] = $iat + $this->refresh_age;
-
-		$access_token = JWT::encode($payload, $appdata->client_secret, 'HS256');
-		$refresh_token = JWT::encode($payload_refresh, $appdata->client_secret, 'HS256');
+		$userdata = $this->user_model->get_by_id($otc->user_id);
+		$tokens = $this->generate_access_tokens($userdata->nip);
 
 		http_response_code(200);
 		echo json_encode([
-			'employee' => [
-				'nip' => $userdata->nip,
-				'name' => $userdata->user_nama
-			],
-			'access_token' => $access_token,
-			'refresh_token' => $refresh_token
+			'access_token' => $tokens->access_token,
+			'refresh_token' => $tokens->refresh_token,
+			'user' => $this->get_user_info($otc->client_id, $otc->user_id)
 		]);
 	}
 
 	public function authorize(){
+		$post = $this->input->post(NULL, TRUE);
+		
+		if(empty($post['type'])){
+			log_message('error', "Missing required parameter \"type\"");
+			http_response_code(401);
+			echo 'Missing required parameter';
+			exit;
+		}
+		$payload = $this->verify_bearer();
+
+		$response = ['status' => 'success'];
+		if($post['type'] == 'refresh'){
+			$tokens = $this->generate_access_tokens($payload->nip);
+			$response['access_token'] = $tokens->access_token;
+			$response['refresh_token'] = $tokens->refresh_token;
+		}
+
+		echo json_encode($response);
+	}
+
+	public function userinfo(){
 		$post = $this->input->post(NULL, TRUE);
 
 		if(empty($post['client_id'])){
@@ -323,89 +345,66 @@ class Sso extends CI_Controller {
 			echo 'Missing client_id';
 			exit;
 		}
-		if(empty($post['access_token']) && empty($post['refresh_token'])){
-			log_message('error', "No access or refresh token found");
-			http_response_code(401);
-			echo 'No access or refresh token found';
-			exit;
-		}
+		$payload = $this->verify_bearer();
 
-		$appdata = $this->db
-		->select('client_secret')
-		->from('apps')
-		->where('client_id', $post['client_id'])
-		->get()
-		->row();
+		$userdata = $this->user_model->get_by_email_or_nip($payload->nip);
+		$response = [
+			'status' => 'success',
+			'user' => $this->get_user_info($post['client_id'], $userdata->user_id)
+		];
 
-		$jwt = '';
-		$is_refresh_token = false;
-		if(!empty($post['refresh_token'])){
-			$is_refresh_token = true;
-			$jwt = $post['refresh_token'];
-		}else{
-			$jwt = $post['access_token'];
-		}
+		echo json_encode($response);
 
-		$decoded = null;
-		try {
-			// JWT::$leeway = 60; //1 min-leeway, should not be mattered since the signature is both signed and verified here
-			$decoded = JWT::decode($jwt, new Key($appdata->client_secret, 'HS256'));
+		// $appdata = $this->app_model->get_by_client_id($post['client_id']);
+		// $decoded = null;
+		// try {
+		// 	// JWT::$leeway = 60; //1 min-leeway, should not be mattered since the signature is both signed and verified here
+		// 	$decoded = JWT::decode($jwt, new Key($appdata->client_secret, 'HS256'));
 
-			$response = ['status' => 'ok'];
-			if($is_refresh_token){
-				$iat = time();
-				$payload = array(
-					'iss' => base_url(),
-					'aud' => $post['client_id'],
-					'iat' => $iat,
-					'nbf' => $iat,
-					'exp' => $iat + $this->access_age,
-					'nip' => $decoded->nip
-				);       
-		
-				$access_token = JWT::encode($payload, $appdata->client_secret, 'HS256');
-				$response['access_token'] = $access_token;
-			}
+		// 	$response = [
+		// 		'status' => 'success',
+		// 		'employee' => $this->get_user_info($post['client_id'], $userdata->user_id)
+		// 	];
 	
-			echo json_encode($response);
-			exit;
-		} catch (InvalidArgumentException $e) {
-			// provided key/key-array is empty or malformed.
-			http_response_code(500);
-			exit;
-		} catch (DomainException $e) {
-			// provided algorithm is unsupported OR
-			// provided key is invalid OR
-			// unknown error thrown in openSSL or libsodium OR
-			// libsodium is required but not available.
-			http_response_code(500);
-			exit;
-		} catch (SignatureInvalidException $e) {
-			// provided JWT signature verification failed.
-			log_message('error', "SignatureInvalidException for token => $jwt");
-			http_response_code(401);
-			echo 'Invalid Signature';
-			exit;
-		} catch (BeforeValidException $e) {
-			// provided JWT is trying to be used before "nbf" claim OR
-			// provided JWT is trying to be used before "iat" claim.
-			log_message('error', "JWT is used before nbf or iat for token => $jwt");
-			http_response_code(401);
-			echo 'JWT is used before nbf or iat';
-			exit;
-		} catch (ExpiredException $e) {
-			// provided JWT is trying to be used after "exp" claim.
-			http_response_code(401);
-			echo 'expired';
-			exit;
-		} catch (UnexpectedValueException $e) {
-			// provided JWT is malformed OR
-			// provided JWT is missing an algorithm / using an unsupported algorithm OR
-			// provided JWT algorithm does not match provided key OR
-			// provided key ID in key/key-array is empty or invalid.
-			http_response_code(500);
-			exit;
-		}
+		// 	echo json_encode($response);
+		// 	exit;
+		// } catch (InvalidArgumentException $e) {
+		// 	// provided key/key-array is empty or malformed.
+		// 	http_response_code(500);
+		// 	exit;
+		// } catch (DomainException $e) {
+		// 	// provided algorithm is unsupported OR
+		// 	// provided key is invalid OR
+		// 	// unknown error thrown in openSSL or libsodium OR
+		// 	// libsodium is required but not available.
+		// 	http_response_code(500);
+		// 	exit;
+		// } catch (SignatureInvalidException $e) {
+		// 	// provided JWT signature verification failed.
+		// 	log_message('error', "SignatureInvalidException for token => $jwt");
+		// 	http_response_code(401);
+		// 	echo 'Invalid Signature';
+		// 	exit;
+		// } catch (BeforeValidException $e) {
+		// 	// provided JWT is trying to be used before "nbf" claim OR
+		// 	// provided JWT is trying to be used before "iat" claim.
+		// 	log_message('error', "JWT is used before nbf or iat for token => $jwt");
+		// 	http_response_code(401);
+		// 	echo 'JWT is used before nbf or iat';
+		// 	exit;
+		// } catch (ExpiredException $e) {
+		// 	// provided JWT is trying to be used after "exp" claim.
+		// 	http_response_code(401);
+		// 	echo 'expired';
+		// 	exit;
+		// } catch (UnexpectedValueException $e) {
+		// 	// provided JWT is malformed OR
+		// 	// provided JWT is missing an algorithm / using an unsupported algorithm OR
+		// 	// provided JWT algorithm does not match provided key OR
+		// 	// provided key ID in key/key-array is empty or invalid.
+		// 	http_response_code(500);
+		// 	exit;
+		// }
 	}
 
 	public function forgot_password(){
@@ -578,5 +577,137 @@ class Sso extends CI_Controller {
 		}
 
 		return "$app->domain/$app->redirect_uri";
+	}
+
+	private function get_user_info($client_id, $user_id){
+		$userdata = $this->user_model->get_by_id($user_id);
+		$roles = $this->user_model->get_roles($user_id, $client_id);
+
+		return [
+			'nip' => $userdata->nip,
+			'name' => $userdata->user_nama,
+			'email' => $userdata->user_username,
+			'roles' => $roles
+		];
+	}
+
+	private function generate_access_tokens($nip){
+		$iat = time();
+		$payload = array(
+			'iss' => base_url(),
+			// 'aud' => $otc->client_id,
+			'aud' => '*',
+			'iat' => $iat,
+			'nbf' => $iat,
+			'exp' => $iat + $this->access_age,
+			'nip' => $nip
+		);
+
+		$payload_refresh = $payload;
+		$payload_refresh['exp'] = $iat + $this->refresh_age;
+
+		$result = [];
+		$result['access_token'] = JWT::encode($payload, $this->server_secret, 'HS256');
+		$result['refresh_token'] = JWT::encode($payload_refresh, $this->server_secret, 'HS256');
+
+		return json_decode(json_encode($result));
+	}
+
+	private function verify_bearer(){
+		$exception = null;
+
+		try {
+			$bearer = $this->getBearerToken();
+			// JWT::$leeway = 60; //1 min-leeway, should not be mattered since the signature is both signed and verified here
+			// $payload = JWT::decode($bearer, new Key($this->server_secret, 'HS256'));
+			$payload = $this->verify_token($bearer);
+
+			return $payload;
+		} catch (InvalidArgumentException $e) {
+			// provided key/key-array is empty or malformed.
+			http_response_code(500);
+			$exception = $e;
+		} catch (DomainException $e) {
+			// provided algorithm is unsupported OR
+			// provided key is invalid OR
+			// unknown error thrown in openSSL or libsodium OR
+			// libsodium is required but not available.
+			http_response_code(500);
+			$exception = $e;
+		} catch (SignatureInvalidException $e) {
+			// provided JWT signature verification failed.
+			log_message('error', $e->getMessage());
+			http_response_code(401);
+			$exception = $e;
+		} catch (BeforeValidException $e) {
+			// provided JWT is trying to be used before "nbf" claim OR
+			// provided JWT is trying to be used before "iat" claim.
+			log_message('error', $e->getMessage().' => '.$e->getPayload());
+			http_response_code(401);
+			$exception = $e;
+		} catch (ExpiredException $e) {
+			// provided JWT is trying to be used after "exp" claim.
+			http_response_code(401);
+			$exception = $e;
+		} catch (UnexpectedValueException $e) {
+			// provided JWT is malformed OR
+			// provided JWT is missing an algorithm / using an unsupported algorithm OR
+			// provided JWT algorithm does not match provided key OR
+			// provided key ID in key/key-array is empty or invalid.
+			http_response_code(500);
+			$exception = $e;
+		}
+
+		if(!empty($exception)){
+			echo $exception->getMessage();
+			exit;
+		}
+	}
+
+	private function verify_token($token){
+		try {
+			// JWT::$leeway = 60; //1 min-leeway, should not be mattered since the signature is both signed and verified here
+			$payload = JWT::decode($token, new Key($this->server_secret, 'HS256'));
+
+			return $payload;
+		} catch (Exception $e) {
+			throw $e;
+		}
+	}
+
+	/** 
+	 * Get header Authorization
+	 * */
+	private function getAuthorizationHeader(){
+		$headers = null;
+		if (isset($_SERVER['Authorization'])) {
+			$headers = trim($_SERVER["Authorization"]);
+		}
+		else if (isset($_SERVER['HTTP_AUTHORIZATION'])) { //Nginx or fast CGI
+			$headers = trim($_SERVER["HTTP_AUTHORIZATION"]);
+		} elseif (function_exists('apache_request_headers')) {
+			$requestHeaders = apache_request_headers();
+			// Server-side fix for bug in old Android versions (a nice side-effect of this fix means we don't care about capitalization for Authorization)
+			$requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
+			//print_r($requestHeaders);
+			if (isset($requestHeaders['Authorization'])) {
+				$headers = trim($requestHeaders['Authorization']);
+			}
+		}
+		return $headers;
+	}
+
+	/**
+	 * get access token from header
+	 * */
+	private function getBearerToken() {
+		$headers = $this->getAuthorizationHeader();
+		// HEADER: Get the access token from the header
+		if (!empty($headers)) {
+			if (preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
+				return $matches[1];
+			}
+		}
+		return null;
 	}
 }
