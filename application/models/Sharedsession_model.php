@@ -14,7 +14,7 @@ class Sharedsession_model extends CI_Model{
 		return $this->db->insert('sso_shared_session', [
 			'session_id' => $session_id,
 			'user_id' => $user_id,
-			'last_activity' => time()
+			'last_activity' => date('Y-m-d H:i:s')
 		]);
 	}
 
@@ -29,7 +29,7 @@ class Sharedsession_model extends CI_Model{
 		if(!empty($rs)){
 			$status = $this->db
 				->where('session_id', $session_id)
-				->update('sso_shared_session', ['last_activity' => time()])
+				->update('sso_shared_session', ['last_activity' => date('Y-m-d H:i:s')])
 				;
 		}
 
