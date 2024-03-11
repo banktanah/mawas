@@ -55,44 +55,55 @@
           <?php
             if(!empty($client_id)){
               $username_cache = !empty($this->session->flashdata('username_cache'))? $this->session->flashdata('username_cache'): '';
-          ?>
-            <form id="login-form" action="<?php echo base_url().'sso/login' ?>" method="post">
-              <input type="hidden" name="client_id" value="<?php echo $client_id ?>">
-              <input type="hidden" name="challenge" value="<?php echo $challenge ?>">
-              <input type="hidden" name="challenge_method" value="<?php echo $challenge_method ?>">
-              <input type="hidden" name="shared_sess_id" value="<?php echo $shared_sess_id ?>">
-              <input type="hidden" name="redirect" value="<?php echo $redirect ?>">
-              <div class="form-group has-feedback">
-                <input type="text" class="form-control" placeholder="NIP/Email" name="username" value="<?=$username_cache?>">
-                <span class="glyphicon glyphicon-user form-control-feedback"></span>
-              </div>
-
-              <div class="form-group has-feedback">
-                <input type="password" class="form-control" placeholder="Password" name="password">
-                <span class="glyphicon glyphicon-lock form-control-feedback"></span>
-              </div>
               
-              <div class="row">
-                <div class="col-xs-12">
-                  <!-- <button type="submit" class="btn btn-primary btn-block btn-flat">LOGIN</button> -->
-                  <button 
-                    class="btn btn-primary btn-block btn-flat g-recaptcha" 
-                    data-sitekey="<?=$recaptcha_site_key?>" 
-                    data-callback="onSubmit" 
-                    data-action="submit"
-                  >
-                    LOGIN
-                  </button>
+              require_once('_utils.php');
+              $domain = GetDomain();
+              setcookie('mwsshsess', $shared_sess_id, time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', $domain, false, true);
+              setcookie('mwsshsess', $shared_sess_id, time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso/get_token', $domain, false, true);
+          ?>
+              <form id="login-form" action="<?php echo base_url().'sso/login' ?>" method="post">
+                <input type="hidden" name="client_id" value="<?php echo $client_id ?>">
+                <input type="hidden" name="challenge" value="<?php echo $challenge ?>">
+                <input type="hidden" name="challenge_method" value="<?php echo $challenge_method ?>">
+                <input type="hidden" name="shared_sess_id" value="<?php echo $shared_sess_id ?>">
+                <input type="hidden" name="redirect" value="<?php echo $redirect ?>">
+                <div class="form-group has-feedback">
+                  <input type="text" id="text_username" class="form-control" placeholder="NIP/Email" name="username" value="<?=$username_cache?>">
+                  <span class="glyphicon glyphicon-user form-control-feedback"></span>
                 </div>
-              </div>
 
-              <div class="row text-center" style="margin-top: 10px;">
-                <span>Lupa Password?</span>
-                <a class="cssbuttongo" href='<?= (base_url()."sso/forgot_password?client_id=$client_id") ?>'>
-                    <span>Click Here</span>
-                </a>
-              </div>
-            </form>
+                <div class="form-group has-feedback">
+                  <input type="password" class="form-control" placeholder="Password" name="password">
+                  <span class="glyphicon glyphicon-lock form-control-feedback"></span>
+                </div>
+                
+                <div class="row">
+                  <div class="col-xs-12">
+                    <!-- <button type="submit" class="btn btn-primary btn-block btn-flat">LOGIN</button> -->
+                    <button 
+                      class="btn btn-primary btn-block btn-flat g-recaptcha" 
+                      data-sitekey="<?=$recaptcha_site_key?>" 
+                      data-callback="onSubmit" 
+                      data-action="submit"
+                    >
+                      LOGIN
+                    </button>
+                  </div>
+                </div>
+
+                <div class="row text-center" style="margin-top: 10px;">
+                  <span>Lupa Password?</span>
+                  <a class="cssbuttongo" href='<?= (base_url()."sso/forgot_password?client_id=$client_id") ?>'>
+                      <span>Click Here</span>
+                  </a>
+                </div>
+              </form>
+              <script>
+                let savedUsername = localStorage.getItem("text_username");
+                if(savedUsername){
+                  document.getElementById('text_username').value = savedUsername;
+                }
+              </script>
           <?php
             }
           ?>
@@ -105,15 +116,19 @@
       </div>
   </div>
 
-  <script>
-    function onSubmit(token) {
-      document.getElementById("login-form").submit();
-    }
-  </script>
-
   <script src="<?php echo base_url(); ?>assets/bower_components/jquery/dist/jquery.min.js"></script>
   <script src="<?php echo base_url(); ?>assets/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
   <script src="<?php echo base_url(); ?>assets/plugins/iCheck/icheck.min.js"></script>
+
+  <script>
+    function onSubmit(token) {
+      let username = document.getElementById('text_username').value;
+      if(username){
+        localStorage.setItem("text_username", username);
+      }
+      document.getElementById("login-form").submit();
+    }
+  </script>
 
 </body>
 </html>

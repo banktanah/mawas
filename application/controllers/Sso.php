@@ -31,6 +31,8 @@ class Sso extends CI_Controller {
 	}
 
 	public function index(){
+		$this->login_with_shared_session_if_exists();
+
 		$get = $this->input->get(NULL, TRUE);
 		$data = [];
 
@@ -54,12 +56,21 @@ class Sso extends CI_Controller {
 				$data['challenge_method'] = $get['challenge_method'];
 				$data['app_name'] = $appdata->apps_nama;
 				$data['app_desc'] = $appdata->apps_desc;
-				$data['client_home'] = urlencode("$appdata->domain/$appdata->redirect_uri");
+				$data['client_home'] = urlencode("$appdata->domain/");
 				$data['recaptcha_site_key'] = $this->config->item('recaptcha')['site_key'];
-				$data['shared_sess_id'] = !empty($get['shared_sess_id'])? $get['shared_sess_id']: '';
+				
+				$shared_sess_id = !empty($_COOKIE['mwsshsess'])? $_COOKIE['mwsshsess']: null;
+				if(empty($shared_sess_id)){
+					$code_length = 32;
+					$shared_sess_id = bin2hex(random_bytes(($code_length-($code_length%2))/2));
+				}
+				$data['shared_sess_id'] = $shared_sess_id;
+
 				$data['redirect'] = !empty($get['redirect'])? $get['redirect']: '';
 			}
 		}
+
+		header("Access-Control-Allow-Headers: *");
 
 		$this->load->view('sso/v_login', $data);
 	}
@@ -67,36 +78,6 @@ class Sso extends CI_Controller {
 	public function login(){
 		$postdatas = $this->input->post(NULL, TRUE);
 		$redirect_back = 'sso';
-
-		/**
-		 * Recaptcha tutorial: 
-		 * https://wesleybaxterhuber.medium.com/i-finally-figured-out-googles-recaptcha-v3-8f668860f82d
-		 */
-		if(empty($postdatas['g-recaptcha-response'])){
-			$this->session->set_flashdata('error', "No recaptcha-response !");
-			redirect($redirect_back);
-		}
-
-		$client = new \GuzzleHttp\Client(); 
-		$res = $client->request('POST', 'https://www.google.com/recaptcha/api/siteverify', [
-			'form_params' => [
-				'secret' => $this->config->item('recaptcha')['secret_key'],
-				'response' => $postdatas['g-recaptcha-response']
-			]
-		]);
-		$status = $res->getStatusCode();
-		if($status != 200){
-			log_message('error', "Hitting recaptcha siteverify-api error, status-code: $status");
-			$this->session->set_flashdata('error', "Failed to verify recaptcha !");
-			redirect($redirect_back);
-		}
-		$resJson = json_decode($res->getBody()->getContents());
-		if($resJson->success == true && $resJson->action == 'submit' && $resJson->score >= 0.5) {
-			// valid submission
-		} else {
-			$this->session->set_flashdata('error', "You spamming too much, are you a bot?");
-			redirect($redirect_back);
-		}
 
 		if(empty($postdatas['client_id']) || empty($postdatas['challenge'])){
 			$this->session->set_flashdata('error', "Unauthorized access !");
@@ -110,17 +91,48 @@ class Sso extends CI_Controller {
 				redirect($redirect_back);
 			}
 		}
-		$client_id = $postdatas['client_id'];
-		$challenge = $postdatas['challenge'];
-
-		$this->form_validation->set_rules('username', '', 'required');
-		$this->form_validation->set_rules('password', '', 'required');
 
 		$loginpage_params = [
 			"client_id=".$postdatas["client_id"],
 			"challenge=".$postdatas["challenge"],
 			"challenge_method=".$postdatas["challenge_method"],
 		];
+
+		/**
+		 * Recaptcha tutorial: 
+		 * https://wesleybaxterhuber.medium.com/i-finally-figured-out-googles-recaptcha-v3-8f668860f82d
+		 */
+		if(empty($postdatas['g-recaptcha-response'])){
+			$this->session->set_flashdata('error', "No recaptcha-response !");
+			redirect($redirect_back.'?'.implode('&', $loginpage_params));
+		}
+
+		$client = new \GuzzleHttp\Client(); 
+		$res = $client->request('POST', 'https://www.google.com/recaptcha/api/siteverify', [
+			'form_params' => [
+				'secret' => $this->config->item('recaptcha')['secret_key'],
+				'response' => $postdatas['g-recaptcha-response']
+			]
+		]);
+		$status = $res->getStatusCode();
+		if($status != 200){
+			log_message('error', "Hitting recaptcha siteverify-api error, status-code: $status");
+			$this->session->set_flashdata('error', "Failed to verify recaptcha !");
+			redirect($redirect_back.'?'.implode('&', $loginpage_params));
+		}
+		$resJson = json_decode($res->getBody()->getContents());
+		if($resJson->success == true && $resJson->action == 'submit' && $resJson->score >= 0.5) {
+			// valid submission
+		} else {
+			$this->session->set_flashdata('error', "You spamming too much, are you a bot?");
+			redirect($redirect_back.'?'.implode('&', $loginpage_params));
+		}
+
+		$client_id = $postdatas['client_id'];
+		$challenge = $postdatas['challenge'];
+
+		$this->form_validation->set_rules('username', '', 'required');
+		$this->form_validation->set_rules('password', '', 'required');
 
 		if($this->form_validation->run() == false){
 			$this->session->set_flashdata('error', "Username/Password harus diisi !");
@@ -180,26 +192,20 @@ class Sso extends CI_Controller {
 		);
 	}
 	
-	public function login_with_shared_session(){
-		$shared_session = isset($_COOKIE['mwsst'])? $_COOKIE['mwsst']: null;
+	public function login_with_shared_session_if_exists(){
+		$shsess_id = isset($_COOKIE['mwsshsess'])? $_COOKIE['mwsshsess']: null;
 
-		if(empty($shared_session))return;
+		if(empty($shsess_id))return;
 
-		$get = $this->input->get(NULL, TRUE);
-
-		try{
-			$payload = $this->verify_token($shared_session);
-
-			$userdata = $this->user_model->get_by_email_or_nip($payload->nip);
-
+		$shsess = $this->sharedsession_model->check_session_valid($shsess_id);
+		if(!empty($shsess)){
+			$get = $this->input->get(NULL, TRUE);
 			$this->return_auth_code_to_client(
 				$get['client_id'],
-				$userdata->user_id,
+				$shsess->user_id,
 				$get['challenge'],
 				$get['challenge_method']
 			);
-		}catch(Exception $e){
-			// it just means that the token is invalid/expired
 		}
 	}
 
@@ -216,11 +222,11 @@ class Sso extends CI_Controller {
 
 		if(empty($appdata)){
 			$this->session->set_flashdata('error', "Unauthorized access !");
-			redirect($redirect_back);
+			redirect($redirect_back.'?'.implode('&', $loginpage_params));
 		}
 		if(empty($appdata->client_secret) || empty($appdata->domain) || empty($appdata->callback_uri)){
 			$this->session->set_flashdata('error', "Invalid Configuration, contact administrator !");
-			redirect($redirect_back);
+			redirect($redirect_back.'?'.implode('&', $loginpage_params));
 		}
 
 		//check user access to the app
@@ -268,6 +274,20 @@ class Sso extends CI_Controller {
 		redirect("$callback_url?$url_params");
 	}
 
+	public function logout(){
+		$payload = $this->verify_bearer();
+
+		$user = $this->user_model->get_by_email_or_nip($payload->nip);
+		$status = $this->sharedsession_model->invalidate($user->user_id);
+
+		$response = [
+			'status' => 'success',
+			'delete_shsess_status' => $status
+		];
+
+		echo json_encode($response);
+	}
+
 	public function get_token(){
 		$post = $this->input->post(NULL, TRUE);
 
@@ -297,11 +317,15 @@ class Sso extends CI_Controller {
 		}
 
 		if($verifier != $otc->challenge){
-			http_response_code(401);exit;
+			http_response_code(401);
+			echo 'PKCE challenge failed';
+			exit;
 		}
 
 		if(time() > $otc->timestamp){
-			http_response_code(401);exit;
+			http_response_code(401);
+			echo 'PKCE key expired';
+			exit;
 		}
 
 		$userdata = $this->user_model->get_by_id($otc->user_id);
@@ -325,6 +349,16 @@ class Sso extends CI_Controller {
 			exit;
 		}
 		$payload = $this->verify_bearer();
+
+		$user = $this->user_model->get_by_email_or_nip($payload->nip);
+
+		$sess = $this->sharedsession_model->check_session_valid_by_userid($user->user_id);
+
+		if(empty($sess)){
+			http_response_code(401);
+			echo 'Expired token';
+			exit;
+		}
 
 		$response = ['status' => 'success'];
 		if($post['type'] == 'refresh'){
@@ -354,57 +388,6 @@ class Sso extends CI_Controller {
 		];
 
 		echo json_encode($response);
-
-		// $appdata = $this->app_model->get_by_client_id($post['client_id']);
-		// $decoded = null;
-		// try {
-		// 	// JWT::$leeway = 60; //1 min-leeway, should not be mattered since the signature is both signed and verified here
-		// 	$decoded = JWT::decode($jwt, new Key($appdata->client_secret, 'HS256'));
-
-		// 	$response = [
-		// 		'status' => 'success',
-		// 		'employee' => $this->get_user_info($post['client_id'], $userdata->user_id)
-		// 	];
-	
-		// 	echo json_encode($response);
-		// 	exit;
-		// } catch (InvalidArgumentException $e) {
-		// 	// provided key/key-array is empty or malformed.
-		// 	http_response_code(500);
-		// 	exit;
-		// } catch (DomainException $e) {
-		// 	// provided algorithm is unsupported OR
-		// 	// provided key is invalid OR
-		// 	// unknown error thrown in openSSL or libsodium OR
-		// 	// libsodium is required but not available.
-		// 	http_response_code(500);
-		// 	exit;
-		// } catch (SignatureInvalidException $e) {
-		// 	// provided JWT signature verification failed.
-		// 	log_message('error', "SignatureInvalidException for token => $jwt");
-		// 	http_response_code(401);
-		// 	echo 'Invalid Signature';
-		// 	exit;
-		// } catch (BeforeValidException $e) {
-		// 	// provided JWT is trying to be used before "nbf" claim OR
-		// 	// provided JWT is trying to be used before "iat" claim.
-		// 	log_message('error', "JWT is used before nbf or iat for token => $jwt");
-		// 	http_response_code(401);
-		// 	echo 'JWT is used before nbf or iat';
-		// 	exit;
-		// } catch (ExpiredException $e) {
-		// 	// provided JWT is trying to be used after "exp" claim.
-		// 	http_response_code(401);
-		// 	echo 'expired';
-		// 	exit;
-		// } catch (UnexpectedValueException $e) {
-		// 	// provided JWT is malformed OR
-		// 	// provided JWT is missing an algorithm / using an unsupported algorithm OR
-		// 	// provided JWT algorithm does not match provided key OR
-		// 	// provided key ID in key/key-array is empty or invalid.
-		// 	http_response_code(500);
-		// 	exit;
-		// }
 	}
 
 	public function forgot_password(){
