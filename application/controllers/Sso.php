@@ -278,7 +278,7 @@ class Sso extends CI_Controller {
 
 		$response = [
 			'status' => 'success',
-			'delete_shsess_status' => $status
+			'invalidate_success' => $status
 		];
 
 		echo json_encode($response);
