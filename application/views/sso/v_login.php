@@ -55,17 +55,11 @@
           <?php
             if(!empty($client_id)){
               $username_cache = !empty($this->session->flashdata('username_cache'))? $this->session->flashdata('username_cache'): '';
-              
-              require_once('_utils.php');
-              $domain = GetDomain();
-              setcookie('mwsshsess', $shared_sess_id, time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', $domain, false, true);
-              setcookie('mwsshsess', $shared_sess_id, time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso/get_token', $domain, false, true);
           ?>
               <form id="login-form" action="<?php echo base_url().'sso/login' ?>" method="post">
                 <input type="hidden" name="client_id" value="<?php echo $client_id ?>">
                 <input type="hidden" name="challenge" value="<?php echo $challenge ?>">
                 <input type="hidden" name="challenge_method" value="<?php echo $challenge_method ?>">
-                <input type="hidden" name="shared_sess_id" value="<?php echo $shared_sess_id ?>">
                 <input type="hidden" name="redirect" value="<?php echo $redirect ?>">
                 <div class="form-group has-feedback">
                   <input type="text" id="text_username" class="form-control" placeholder="NIP/Email" name="username" value="<?=$username_cache?>">

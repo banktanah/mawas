@@ -16,6 +16,8 @@ class Sso extends CI_Controller {
 	private $refresh_age;
 	private $server_secret;
 
+	private const COOKIE_SESSION_NAME = 'mwsshsess';
+
 	function __construct(){
 		parent::__construct();
 		$sso_config = $this->config->item('sso');
@@ -58,19 +60,13 @@ class Sso extends CI_Controller {
 				$data['app_desc'] = $appdata->apps_desc;
 				$data['client_home'] = urlencode("$appdata->domain/");
 				$data['recaptcha_site_key'] = $this->config->item('recaptcha')['site_key'];
-				
-				$shared_sess_id = !empty($_COOKIE['mwsshsess'])? $_COOKIE['mwsshsess']: null;
-				if(empty($shared_sess_id)){
-					$code_length = 32;
-					$shared_sess_id = bin2hex(random_bytes(($code_length-($code_length%2))/2));
-				}
-				$data['shared_sess_id'] = $shared_sess_id;
-
 				$data['redirect'] = !empty($get['redirect'])? $get['redirect']: '';
+
+				setcookie(self::COOKIE_SESSION_NAME, self::generate_random_string(32), time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
 			}
 		}
 
-		header("Access-Control-Allow-Headers: *");
+		header("Access-Control-Allow-Headers: *"); //allows header thrown by some libraries(eg: x-xsrf-token)
 
 		$this->load->view('sso/v_login', $data);
 	}
@@ -181,7 +177,7 @@ class Sso extends CI_Controller {
 			redirect($redirect_back.'?'.implode('&', $loginpage_params));
 		}
 
-		$this->sharedsession_model->create_session($postdatas["shared_sess_id"], $userdata->user_id);
+		$this->sharedsession_model->create_session($_COOKIE[self::COOKIE_SESSION_NAME], $userdata->user_id);
 
 		$this->return_auth_code_to_client(
 			$client_id,
@@ -193,7 +189,7 @@ class Sso extends CI_Controller {
 	}
 	
 	public function login_with_shared_session_if_exists(){
-		$shsess_id = isset($_COOKIE['mwsshsess'])? $_COOKIE['mwsshsess']: null;
+		$shsess_id = !empty($_COOKIE[self::COOKIE_SESSION_NAME])? $_COOKIE[self::COOKIE_SESSION_NAME]: null;
 
 		if(empty($shsess_id))return;
 
@@ -600,10 +596,9 @@ class Sso extends CI_Controller {
 		$exception = null;
 
 		try {
-			$bearer = $this->getBearerToken();
+			$bearer = self::GetBearerToken();
 			// JWT::$leeway = 60; //1 min-leeway, should not be mattered since the signature is both signed and verified here
-			// $payload = JWT::decode($bearer, new Key($this->server_secret, 'HS256'));
-			$payload = $this->verify_token($bearer);
+			$payload = JWT::decode($bearer, new Key($this->server_secret, 'HS256'));
 
 			return $payload;
 		} catch (InvalidArgumentException $e) {
@@ -647,26 +642,14 @@ class Sso extends CI_Controller {
 		}
 	}
 
-	private function verify_token($token){
-		try {
-			// JWT::$leeway = 60; //1 min-leeway, should not be mattered since the signature is both signed and verified here
-			$payload = JWT::decode($token, new Key($this->server_secret, 'HS256'));
-
-			return $payload;
-		} catch (Exception $e) {
-			throw $e;
-		}
-	}
-
-	/** 
-	 * Get header Authorization
+	/**
+	 * get Bearer Token from header
 	 * */
-	private function getAuthorizationHeader(){
+	private static function GetBearerToken() {
 		$headers = null;
 		if (isset($_SERVER['Authorization'])) {
 			$headers = trim($_SERVER["Authorization"]);
-		}
-		else if (isset($_SERVER['HTTP_AUTHORIZATION'])) { //Nginx or fast CGI
+		} else if (isset($_SERVER['HTTP_AUTHORIZATION'])) { //Nginx or fast CGI
 			$headers = trim($_SERVER["HTTP_AUTHORIZATION"]);
 		} elseif (function_exists('apache_request_headers')) {
 			$requestHeaders = apache_request_headers();
@@ -677,20 +660,40 @@ class Sso extends CI_Controller {
 				$headers = trim($requestHeaders['Authorization']);
 			}
 		}
-		return $headers;
-	}
 
-	/**
-	 * get access token from header
-	 * */
-	private function getBearerToken() {
-		$headers = $this->getAuthorizationHeader();
 		// HEADER: Get the access token from the header
 		if (!empty($headers)) {
 			if (preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
 				return $matches[1];
 			}
 		}
+
 		return null;
+	}
+
+	private static function generate_random_string($length){
+		return bin2hex(random_bytes(($length-($length%2))/2));
+	}
+
+	private static function get_domain(){
+		$url = '';
+		if(isset($_SERVER['HTTP_HOST'])){
+			$url = $_SERVER['HTTP_HOST'];
+		}else if(isset($_SERVER['SERVER_NAME'])){
+			$url = $_SERVER['SERVER_NAME'];
+		}else if(isset($_SERVER['SERVER_ADDR'])){
+		  $url = $_SERVER['SERVER_ADDR'];
+		}
+	
+		$url = in_array($url, ['0.0.0.0', '::1'])? 'localhost': $url;
+	
+		$pieces = parse_url($url);
+		$domain = isset($pieces['host'])? $pieces['host']: (isset($pieces['path'])? $pieces['path']: '');
+			
+		if(preg_match('/(?P<domain>[a-z0-9][a-z0-9\-]{1,63}\.[a-z\.]{2,6})$/i', $domain, $regs)){
+			return '.'.$regs['domain'];
+		}
+		
+		return $domain;
 	}
 }
