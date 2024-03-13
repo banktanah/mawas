@@ -62,7 +62,7 @@ class Sso extends CI_Controller {
 				$data['recaptcha_site_key'] = $this->config->item('recaptcha')['site_key'];
 				$data['redirect'] = !empty($get['redirect'])? $get['redirect']: '';
 
-				$shsessid = !empty($get['shsessid'])? $get['shsessid']: 
+				$shsessid = !empty($get['shsessid'])? $get['shsessid']: self::generate_random_string(32);
 				setcookie(self::COOKIE_SESSION_NAME, $shsessid, time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
 			}
 		}
