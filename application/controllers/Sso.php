@@ -62,7 +62,8 @@ class Sso extends CI_Controller {
 				$data['recaptcha_site_key'] = $this->config->item('recaptcha')['site_key'];
 				$data['redirect'] = !empty($get['redirect'])? $get['redirect']: '';
 
-				setcookie(self::COOKIE_SESSION_NAME, self::generate_random_string(32), time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
+				$shsessid = !empty($get['shsessid'])? $get['shsessid']: 
+				setcookie(self::COOKIE_SESSION_NAME, $shsessid, time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
 			}
 		}
 
@@ -141,7 +142,6 @@ class Sso extends CI_Controller {
 		$password = $this->input->post('password');
 
 		$userdata = null;
-
 		if($this->login_method == SSO_METHOD_DB){ //login using mawas-db
 			$userdata = $this->user_model->do_login($username, $password);
 		}else if($this->login_method == SSO_METHOD_SMTP){ //login using mailservice
@@ -177,7 +177,11 @@ class Sso extends CI_Controller {
 			redirect($redirect_back.'?'.implode('&', $loginpage_params));
 		}
 
-		$this->sharedsession_model->create_session($_COOKIE[self::COOKIE_SESSION_NAME], $userdata->user_id);
+		$shared_session_id = $_COOKIE[self::COOKIE_SESSION_NAME];
+		$existing = $this->sharedsession_model->check_session($shared_session_id);
+		if(empty($existing)){
+			$this->sharedsession_model->create_session($shared_session_id, $userdata->user_id);
+		}
 
 		$this->return_auth_code_to_client(
 			$client_id,
@@ -193,7 +197,7 @@ class Sso extends CI_Controller {
 
 		if(empty($shsess_id))return;
 
-		$shsess = $this->sharedsession_model->check_session_valid($shsess_id);
+		$shsess = $this->sharedsession_model->check_session($shsess_id);
 		if(!empty($shsess)){
 			$get = $this->input->get(NULL, TRUE);
 			$this->return_auth_code_to_client(
@@ -247,13 +251,13 @@ class Sso extends CI_Controller {
 			redirect($redirect_back.'?'.implode('&', $loginpage_params));
 		}
 
-		$code_length = 64;
-		$code = bin2hex(random_bytes(($code_length-($code_length%2))/2));
+		$code = self::generate_random_string(64);
 
 		$this->db->insert('sso_otc', [
 			'code' => $code,
 			'client_id' => $client_id,
 			'user_id' => $user_id,
+			'shared_session_id' => $_COOKIE[self::COOKIE_SESSION_NAME],
 			'challenge' => $challenge,
 			'challenge_method' => $challenge_method,
 			'timestamp' => (time() + (60 * 5))
@@ -268,20 +272,6 @@ class Sso extends CI_Controller {
 		$url_params = implode('&', $params);
 
 		redirect("$callback_url?$url_params");
-	}
-
-	public function logout(){
-		$payload = $this->verify_bearer();
-
-		$user = $this->user_model->get_by_email_or_nip($payload->nip);
-		$status = $this->sharedsession_model->invalidate($user->user_id);
-
-		$response = [
-			'status' => 'success',
-			'invalidate_success' => $status
-		];
-
-		echo json_encode($response);
 	}
 
 	public function get_token(){
@@ -324,8 +314,11 @@ class Sso extends CI_Controller {
 			exit;
 		}
 
+		$multi_session_id = self::generate_random_string(32);
+		$status = $this->sharedsession_model->create_session_multi($otc->shared_session_id, $multi_session_id);
+
 		$userdata = $this->user_model->get_by_id($otc->user_id);
-		$tokens = $this->generate_access_tokens($userdata->nip);
+		$tokens = $this->generate_access_tokens($userdata->nip, $multi_session_id);
 
 		http_response_code(200);
 		echo json_encode([
@@ -335,7 +328,7 @@ class Sso extends CI_Controller {
 		]);
 	}
 
-	public function authorize(){
+	public function auth(){
 		$post = $this->input->post(NULL, TRUE);
 		
 		if(empty($post['type'])){
@@ -348,11 +341,12 @@ class Sso extends CI_Controller {
 
 		$user = $this->user_model->get_by_email_or_nip($payload->nip);
 
-		$sess = $this->sharedsession_model->check_session_valid_by_userid($user->user_id);
+		// $sess = $this->sharedsession_model->check_session_by_userid($user->user_id);
+		$sess = $this->sharedsession_model->check_session_by_multisessionid($payload->msi);
 
 		if(empty($sess)){
 			http_response_code(401);
-			echo 'Expired token';
+			echo 'Expired session';
 			exit;
 		}
 
@@ -362,6 +356,45 @@ class Sso extends CI_Controller {
 			$response['access_token'] = $tokens->access_token;
 			$response['refresh_token'] = $tokens->refresh_token;
 		}
+
+		echo json_encode($response);
+	}
+
+	private function generate_access_tokens($nip, $multi_session_id){
+		$iat = time();
+		$payload = array(
+			'iss' => base_url(),
+			// 'aud' => $otc->client_id,
+			'aud' => '*',
+			'iat' => $iat,
+			'nbf' => $iat,
+			'exp' => $iat + $this->access_age,
+			'nip' => $nip,
+			'msi' => $multi_session_id
+		);
+
+		$payload_refresh = $payload;
+		$payload_refresh['exp'] = $iat + $this->refresh_age;
+
+		$result = [];
+		$result['access_token'] = JWT::encode($payload, $this->server_secret, 'HS256');
+		$result['refresh_token'] = JWT::encode($payload_refresh, $this->server_secret, 'HS256');
+
+		return json_decode(json_encode($result));
+	}
+	
+	public function logout(){
+		$payload = $this->verify_bearer();
+
+		$user = $this->user_model->get_by_email_or_nip($payload->nip);
+		// $status = $this->sharedsession_model->invalidate_by_userid($user->user_id);
+		$status = $this->sharedsession_model->invalidate_by_multisessionid($payload->msi);
+		
+
+		$response = [
+			'status' => 'success',
+			'invalidate_success' => $status
+		];
 
 		echo json_encode($response);
 	}
@@ -568,28 +601,6 @@ class Sso extends CI_Controller {
 			'email' => $userdata->user_username,
 			'roles' => $roles
 		];
-	}
-
-	private function generate_access_tokens($nip){
-		$iat = time();
-		$payload = array(
-			'iss' => base_url(),
-			// 'aud' => $otc->client_id,
-			'aud' => '*',
-			'iat' => $iat,
-			'nbf' => $iat,
-			'exp' => $iat + $this->access_age,
-			'nip' => $nip
-		);
-
-		$payload_refresh = $payload;
-		$payload_refresh['exp'] = $iat + $this->refresh_age;
-
-		$result = [];
-		$result['access_token'] = JWT::encode($payload, $this->server_secret, 'HS256');
-		$result['refresh_token'] = JWT::encode($payload_refresh, $this->server_secret, 'HS256');
-
-		return json_decode(json_encode($result));
 	}
 
 	private function verify_bearer(){
