@@ -11,4 +11,11 @@
       background-size: cover;
       min-height: 100vh;
     }
+
+    .center-ele { 
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+      /* width: 40%; */
+    }
 </style>

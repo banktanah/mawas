@@ -239,7 +239,7 @@ class Sso extends CI_Controller {
 			'redirect' => !empty($get['redirect'])? $get['redirect']: ''
 		];
 
-		$this->load->view('sso/v_login_with_remember_token', $data);
+		$this->load->view('sso/_login_with_remember_token', $data);
 	}
 
 	public function login_via_remember(){

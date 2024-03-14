@@ -17,7 +17,7 @@
 </head>
 <!-- <body class="hold-transition login-page bg-gradient"> -->
 <body class="hold-transition login-page with-bg-img">
-  <div class="login-box" style="margin-top: 10%;">
+  <div class="login-box center-ele">
     <div class="login-logo">
       <!-- <h3>APLIKASI MONITORING KEUANGAN</h3>      -->
     </div>

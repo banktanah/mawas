@@ -19,7 +19,7 @@
 </head>
 <!-- <body class="hold-transition login-page bg-gradient" style="overflow-y: hidden;"> -->
 <body class="hold-transition login-page with-bg-img" style="overflow-y: hidden;">
-  <div class="login-box" style="margin-top: 10%;">
+  <div class="login-box center-ele">
       <div class="login-box-body" style="border-radius: 15px;">
         <img src="<?php echo base_url('gambar/logo.png') ?>" class="img-responsive">
 
