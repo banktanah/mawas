@@ -1,3 +1,0 @@
-[submodule "application/libraries/bbt-sso-client-compat"]
-	path = application/libraries/bbt-sso-client-compat
-	url = https://github.com/virtualynx/bbt-sso-client-compat.git
