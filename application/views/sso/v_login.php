@@ -61,6 +61,7 @@
                 <input type="hidden" name="challenge" value="<?php echo $challenge ?>">
                 <input type="hidden" name="challenge_method" value="<?php echo $challenge_method ?>">
                 <input type="hidden" name="redirect" value="<?php echo $redirect ?>">
+
                 <div class="form-group has-feedback">
                   <input type="text" id="text_username" class="form-control" placeholder="NIP/Email" name="username" value="<?=$username_cache?>">
                   <span class="glyphicon glyphicon-user form-control-feedback"></span>
@@ -69,6 +70,11 @@
                 <div class="form-group has-feedback">
                   <input type="password" class="form-control" placeholder="Password" name="password">
                   <span class="glyphicon glyphicon-lock form-control-feedback"></span>
+                </div>
+
+                <div class="form-group has-feedback">
+                  <input type="checkbox" id="remember_me" name="remember_me">
+                  <label for="remember_me"> Remember Me</label><br>
                 </div>
                 
                 <div class="row">
@@ -122,6 +128,46 @@
       }
       document.getElementById("login-form").submit();
     }
+
+    <?php
+      /**
+       * We login via javascript because we need the new session id generated -
+       * by the login-page's response header. We should use new session id every -
+       * login to avoid session fixation attack
+       */
+      if(!empty($remember_user_id)){
+    ?>
+        // let form = document.createElement("form");
+        // form.method = "POST";
+        // form.action = "<?=base_url('/sso/login_via_remember')?>";
+  
+        // let input_user_id = document.createElement("input");
+        // input_user_id.name = "user_id";
+        // input_user_id.value = "<?=$remember_user_id?>";
+        // form.appendChild(input_user_id);
+
+        // let url = new URL(window.location.href);
+  
+        // let input_client_id = document.createElement("input");
+        // input_client_id.name = "client_id";
+        // input_client_id.value = url.searchParams.get("client_id");
+        // form.appendChild(input_client_id);
+  
+        // let input_challenge = document.createElement("input");
+        // input_challenge.name = "challenge";
+        // input_challenge.value = url.searchParams.get("challenge");
+        // form.appendChild(input_challenge);
+  
+        // let input_challenge_method = document.createElement("input");
+        // input_challenge_method.name = "challenge_method";
+        // input_challenge_method.value = url.searchParams.get("challenge_method");
+        // form.appendChild(input_challenge_method);
+  
+        // document.body.appendChild(form);
+        // form.submit();
+    <?php
+      }
+    ?>
   </script>
 
 </body>

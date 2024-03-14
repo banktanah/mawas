@@ -129,6 +129,15 @@ class User_model extends CI_Model{
 			->get()
 			->row();
 	}
+
+	public function get_by_remember_token($remember_token){
+		return $this->db
+			->select('*')
+			->from('user')
+			->where('remember_token', $remember_token)
+			->get()
+			->row();
+	}
 	
 }
 

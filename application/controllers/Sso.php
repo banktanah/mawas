@@ -1,6 +1,9 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
+require_once APPPATH."/libraries/bbt-sso-client-compat/Encrypter.php";
+
+use Bbt\Sso\Encrypter;
 use Firebase\JWT\BeforeValidException;
 use Firebase\JWT\ExpiredException;
 use Firebase\JWT\JWT;
@@ -17,6 +20,7 @@ class Sso extends CI_Controller {
 	private $server_secret;
 
 	private const COOKIE_SESSION_NAME = 'mwsshsess';
+	private const COOKIE_REMEMBER_NAME = 'mwsrmbt';
 
 	function __construct(){
 		parent::__construct();
@@ -34,6 +38,7 @@ class Sso extends CI_Controller {
 
 	public function index(){
 		$this->login_with_shared_session_if_exists();
+		$this->login_with_remember_token_if_exists();
 
 		$get = $this->input->get(NULL, TRUE);
 		$data = [];
@@ -62,8 +67,8 @@ class Sso extends CI_Controller {
 				$data['recaptcha_site_key'] = $this->config->item('recaptcha')['site_key'];
 				$data['redirect'] = !empty($get['redirect'])? $get['redirect']: '';
 
-				$shsessid = !empty($get['shsessid'])? $get['shsessid']: self::generate_random_string(32);
-				setcookie(self::COOKIE_SESSION_NAME, $shsessid, time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
+				setcookie(self::COOKIE_SESSION_NAME, self::generate_random_string(64), time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
+				setcookie(self::COOKIE_REMEMBER_NAME, self::generate_random_string(64), time() + (60*60*24*30), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
 			}
 		}
 
@@ -177,36 +182,76 @@ class Sso extends CI_Controller {
 			redirect($redirect_back.'?'.implode('&', $loginpage_params));
 		}
 
-		$shared_session_id = $_COOKIE[self::COOKIE_SESSION_NAME];
-		$existing = $this->sharedsession_model->check_session($shared_session_id);
-		if(empty($existing)){
-			$this->sharedsession_model->create_session($shared_session_id, $userdata->user_id);
-		}
+		// $shared_session_id = $_COOKIE[self::COOKIE_SESSION_NAME];
+		// $existing = $this->sharedsession_model->check_session($shared_session_id);
+		// if(empty($existing)){
+		// 	$this->sharedsession_model->create_session($shared_session_id, $userdata->user_id);
+		// }
+
+		$remember_me = !empty($postdatas['remember_me'])? 1: 0;
 
 		$this->return_auth_code_to_client(
 			$client_id,
 			$userdata->user_id,
 			$challenge,
 			$challenge_method,
-			$loginpage_params
+			$loginpage_params,
+			$remember_me
 		);
 	}
 	
-	public function login_with_shared_session_if_exists(){
+	private function login_with_shared_session_if_exists(){
 		$shsess_id = !empty($_COOKIE[self::COOKIE_SESSION_NAME])? $_COOKIE[self::COOKIE_SESSION_NAME]: null;
 
 		if(empty($shsess_id))return;
 
 		$shsess = $this->sharedsession_model->check_session($shsess_id);
-		if(!empty($shsess)){
-			$get = $this->input->get(NULL, TRUE);
-			$this->return_auth_code_to_client(
-				$get['client_id'],
-				$shsess->user_id,
-				$get['challenge'],
-				$get['challenge_method']
-			);
-		}
+
+		if(empty($shsess))return;
+
+		$get = $this->input->get(NULL, TRUE);
+		$this->return_auth_code_to_client(
+			$get['client_id'],
+			$shsess->user_id,
+			$get['challenge'],
+			$get['challenge_method']
+		);
+	}
+	
+	private function login_with_remember_token_if_exists(){
+		$remember_token = !empty($_COOKIE[self::COOKIE_REMEMBER_NAME])? $_COOKIE[self::COOKIE_REMEMBER_NAME]: null;
+
+		if(empty($remember_token))return;
+
+		$user = $this->user_model->get_by_remember_token($remember_token);
+
+		if(empty($user))return;
+
+		setcookie(self::COOKIE_SESSION_NAME, self::generate_random_string(64), time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
+		setcookie(self::COOKIE_REMEMBER_NAME, self::generate_random_string(64), time() + (60*60*24*30), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
+
+		$get = $this->input->get(null, true);
+		$data = [
+			'user_id' => $user->user_id,
+			'client_id' => $get['client_id'],
+			'challenge' => $get['challenge'],
+			'challenge_method' => $get['challenge_method'],
+			'redirect' => !empty($get['redirect'])? $get['redirect']: ''
+		];
+
+		$this->load->view('sso/v_login_with_remember_token', $data);
+	}
+
+	public function login_via_remember(){
+		$post = $this->input->post(NULL, TRUE);
+		$this->return_auth_code_to_client(
+			$post['client_id'],
+			$post['user_id'],
+			$post['challenge'],
+			$post['challenge_method'],
+			[],
+			1
+		);
 	}
 
 	private function return_auth_code_to_client(
@@ -214,7 +259,8 @@ class Sso extends CI_Controller {
 		$user_id,
 		$challenge,
 		$challenge_method,
-		$loginpage_params = []
+		$loginpage_params = [],
+		$remember_me = 0
 	){
 		$redirect_back = 'sso';
 
@@ -260,7 +306,9 @@ class Sso extends CI_Controller {
 			'shared_session_id' => $_COOKIE[self::COOKIE_SESSION_NAME],
 			'challenge' => $challenge,
 			'challenge_method' => $challenge_method,
-			'timestamp' => (time() + (60 * 5))
+			'timestamp' => (time() + (60 * 5)),
+			'remember_me' => $remember_me,
+			'remember_token' => $_COOKIE[self::COOKIE_REMEMBER_NAME]
 		]);
 		
 		$callback_url = $appdata->domain.$appdata->callback_uri;
@@ -314,8 +362,19 @@ class Sso extends CI_Controller {
 			exit;
 		}
 
-		$multi_session_id = self::generate_random_string(32);
-		$status = $this->sharedsession_model->create_session_multi($otc->shared_session_id, $multi_session_id);
+		if($otc->remember_me == 1){
+			$this->db
+				->where('user_id', $otc->user_id)
+				->update('user', ['remember_token' => $otc->remember_token])
+				;
+		}
+		$existing_session = $this->sharedsession_model->check_session($otc->shared_session_id);
+		if(empty($existing_session)){ //first time login
+			$status = $this->sharedsession_model->create_session($otc->shared_session_id, $otc->user_id);
+		}
+		$multi_session_id = self::generate_random_string(64);
+		$appdata = $this->app_model->get_by_client_id($otc->client_id);
+		$status = $this->sharedsession_model->create_session_multi($otc->shared_session_id, $multi_session_id, $appdata->apps_id);
 
 		$userdata = $this->user_model->get_by_id($otc->user_id);
 		$tokens = $this->generate_access_tokens($userdata->nip, $multi_session_id);
@@ -352,7 +411,7 @@ class Sso extends CI_Controller {
 
 		$response = ['status' => 'success'];
 		if($post['type'] == 'refresh'){
-			$tokens = $this->generate_access_tokens($payload->nip);
+			$tokens = $this->generate_access_tokens($payload->nip, $payload->msi);
 			$response['access_token'] = $tokens->access_token;
 			$response['refresh_token'] = $tokens->refresh_token;
 		}
@@ -386,17 +445,16 @@ class Sso extends CI_Controller {
 	public function logout(){
 		$payload = $this->verify_bearer();
 
-		$user = $this->user_model->get_by_email_or_nip($payload->nip);
 		// $status = $this->sharedsession_model->invalidate_by_userid($user->user_id);
 		$status = $this->sharedsession_model->invalidate_by_multisessionid($payload->msi);
 		
+		$user = $this->user_model->get_by_email_or_nip($payload->nip);
+		$status = $this->db
+			->where('user_id', $user->user_id)
+			->update('user', ['remember_token' => null])
+			;
 
-		$response = [
-			'status' => 'success',
-			'invalidate_success' => $status
-		];
-
-		echo json_encode($response);
+		echo json_encode(['status' => 'success']);
 	}
 
 	public function userinfo(){
@@ -696,7 +754,7 @@ class Sso extends CI_Controller {
 		  $url = $_SERVER['SERVER_ADDR'];
 		}
 	
-		$url = in_array($url, ['0.0.0.0', '::1'])? 'localhost': $url;
+		$url = in_array($url, ['127.0.0.1', '0.0.0.0', '::1'])? 'localhost': $url;
 	
 		$pieces = parse_url($url);
 		$domain = isset($pieces['host'])? $pieces['host']: (isset($pieces['path'])? $pieces['path']: '');

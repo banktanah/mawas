@@ -18,10 +18,11 @@ class Sharedsession_model extends CI_Model{
 		]);
 	}
 
-	public function create_session_multi($session_id, $multi_session_id){
+	public function create_session_multi($session_id, $multi_session_id, $apps_id){
 		return $this->db->insert('sso_shared_session_multi', [
 			'shared_session_id' => $session_id,
 			'multi_session_id' => $multi_session_id,
+			'apps_id' => $apps_id
 		]);
 	}
 
