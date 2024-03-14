@@ -86,3 +86,5 @@ defined('EXIT__AUTO_MAX')      OR define('EXIT__AUTO_MAX', 125); // highest auto
 
 defined('SSO_METHOD_DB')       OR define('SSO_METHOD_DB', 'db');
 defined('SSO_METHOD_SMTP')     OR define('SSO_METHOD_SMTP', 'smtp');
+
+defined('AUTH_ERROR_MULTIDEVICE_LOGIN')     OR define('AUTH_ERROR_MULTIDEVICE_LOGIN', 'You logged-in on another device');

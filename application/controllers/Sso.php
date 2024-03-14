@@ -182,12 +182,6 @@ class Sso extends CI_Controller {
 			redirect($redirect_back.'?'.implode('&', $loginpage_params));
 		}
 
-		// $shared_session_id = $_COOKIE[self::COOKIE_SESSION_NAME];
-		// $existing = $this->sharedsession_model->check_session($shared_session_id);
-		// if(empty($existing)){
-		// 	$this->sharedsession_model->create_session($shared_session_id, $userdata->user_id);
-		// }
-
 		$remember_me = !empty($postdatas['remember_me'])? 1: 0;
 
 		$this->return_auth_code_to_client(
@@ -400,12 +394,16 @@ class Sso extends CI_Controller {
 
 		$user = $this->user_model->get_by_email_or_nip($payload->nip);
 
-		// $sess = $this->sharedsession_model->check_session_by_userid($user->user_id);
 		$sess = $this->sharedsession_model->check_session_by_multisessionid($payload->msi);
 
 		if(empty($sess)){
 			http_response_code(401);
 			echo 'Expired session';
+			exit;
+		}else if($sess->forced_logout_status != null){
+			$this->sharedsession_model->invalidate($sess->session_id);
+			http_response_code(401);
+			echo $sess->forced_logout_status;
 			exit;
 		}
 
@@ -445,7 +443,6 @@ class Sso extends CI_Controller {
 	public function logout(){
 		$payload = $this->verify_bearer();
 
-		// $status = $this->sharedsession_model->invalidate_by_userid($user->user_id);
 		$status = $this->sharedsession_model->invalidate_by_multisessionid($payload->msi);
 		
 		$user = $this->user_model->get_by_email_or_nip($payload->nip);

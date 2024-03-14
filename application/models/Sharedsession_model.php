@@ -10,9 +10,25 @@ class Sharedsession_model extends CI_Model{
 		$this->load->model('user_model');
 	}
 
-	public function create_session($session_id, $user_id){
+	public function create_session($new_session_id, $user_id){
+		$user = $this->user_model->get_by_id($user_id);
+
+		if($user->allow_multiple_device == 0){
+			$other_sessions = $this->check_session_by_userid($user_id);
+			foreach($other_sessions as $loop_sess){
+				// $success = $this->invalidate($loop_sess->session_id);
+				
+				$forced_status = AUTH_ERROR_MULTIDEVICE_LOGIN;
+				$status = $this->db->query("
+					update sso_shared_session
+					set forced_logout_status = '$forced_status'
+					where session_id = '$loop_sess->session_id'
+				");
+			}
+		}
+		
 		return $this->db->insert('sso_shared_session', [
-			'session_id' => $session_id,
+			'session_id' => $new_session_id,
 			'user_id' => $user_id,
 			'last_activity' => date('Y-m-d H:i:s')
 		]);
@@ -26,7 +42,7 @@ class Sharedsession_model extends CI_Model{
 		]);
 	}
 
-	public function check_session_by_userid($user_id){
+	public function check_session_by_userid($user_id): array{
 		$session_age_hours = self::SESSION_AGE_HOURS;
 		$rs = $this->db
 			->from('sso_shared_session')
@@ -37,17 +53,14 @@ class Sharedsession_model extends CI_Model{
 			->result();
 
 		if(!empty($rs)){
-			$count = count($rs);
-			if($count>1){
-				for($a=1; $a<$count; $a++){
-					$this->invalidate($rs[$a]->session_id);
-				}
+			foreach($rs as $loop_sess){
+				$this->check_session($loop_sess->session_id);
 			}
 
-			return $this->check_session($rs[0]->session_id);
+			return $rs;
 		}
 
-		return null;
+		return [];
 	}
 
 	public function check_session_by_multisessionid($multi_session_id){
@@ -62,22 +75,6 @@ class Sharedsession_model extends CI_Model{
 			->result();
 
 		if(!empty($rs)){
-			$shared_session = $rs[0];
-			$rs_other_device = $this->db
-				->from('sso_shared_session')
-				->where('session_id <>', $shared_session->session_id)
-				->where('user_id', $shared_session->user_id)
-				->where("last_activity >= now() - INTERVAL $session_age_hours HOUR")
-				->order_by("last_activity", "DESC")
-				->get()
-				->result();
-			$other_count = count($rs_other_device);
-			if($other_count > 0){
-				for($a=0; $a<$other_count; $a++){
-					$this->invalidate($rs_other_device[$a]->session_id);
-				}
-			}
-
 			return $this->check_session($rs[0]->session_id);
 		}
 
@@ -137,17 +134,23 @@ class Sharedsession_model extends CI_Model{
 		return $success;
 	}
 
-	public function invalidate_by_userid($user_id){
-		$sess = $this->check_session_by_userid($user_id);
+	public function invalidate_by_userid($user_id): int{
+		$invalidated_count = 0;
+		$sess_arr = $this->check_session_by_userid($user_id);
 
 		if(!empty($sess)){
-			return $this->invalidate($sess->session_id);
+			foreach($sess_arr as $loop_sess){
+				$sucess = $this->invalidate($loop_sess->session_id);
+				if($sucess){
+					$invalidated_count++;
+				}
+			}
 		}
 
-		return false;
+		return $invalidated_count;
 	}
 
-	public function invalidate_by_multisessionid($multi_session_id){
+	public function invalidate_by_multisessionid($multi_session_id): bool{
 		$sess = $this->check_session_by_multisessionid($multi_session_id);
 
 		if(!empty($sess)){
@@ -168,10 +171,6 @@ class Sharedsession_model extends CI_Model{
 			;
 
 		return $status;
-	}
-
-	public function logout_other_device($currently_used_session_id){
-
 	}
 }
 
