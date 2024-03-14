@@ -1,9 +1,9 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-require_once APPPATH."/libraries/bbt-sso-client-compat/Encrypter.php";
+// require_once APPPATH."/libraries/bbt-sso-client-compat/Encrypter.php";
 
-use Bbt\Sso\Encrypter;
+// use Bbt\Sso\Encrypter;
 use Firebase\JWT\BeforeValidException;
 use Firebase\JWT\ExpiredException;
 use Firebase\JWT\JWT;
