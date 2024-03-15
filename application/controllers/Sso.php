@@ -100,6 +100,10 @@ class Sso extends CI_Controller {
 			"challenge_method=".$postdatas["challenge_method"],
 		];
 
+		if(!empty($postdatas["redirect"])){
+			$loginpage_params []= "redirect=".$postdatas["redirect"];
+		}
+
 		/**
 		 * Recaptcha tutorial: 
 		 * https://wesleybaxterhuber.medium.com/i-finally-figured-out-googles-recaptcha-v3-8f668860f82d
@@ -184,11 +188,13 @@ class Sso extends CI_Controller {
 
 		$remember_me = !empty($postdatas['remember_me'])? 1: 0;
 
+		$redirect = $this->input->post('redirect');
 		$this->return_auth_code_to_client(
 			$client_id,
 			$userdata->user_id,
 			$challenge,
 			$challenge_method,
+			!empty($redirect)? $redirect: '',
 			$loginpage_params,
 			$remember_me
 		);
@@ -204,11 +210,13 @@ class Sso extends CI_Controller {
 		if(empty($shsess))return;
 
 		$get = $this->input->get(NULL, TRUE);
+		$redirect = $this->input->get('redirect');
 		$this->return_auth_code_to_client(
 			$get['client_id'],
 			$shsess->user_id,
 			$get['challenge'],
-			$get['challenge_method']
+			$get['challenge_method'],
+			!empty($redirect)? $redirect: ''
 		);
 	}
 	
@@ -238,11 +246,13 @@ class Sso extends CI_Controller {
 
 	public function login_via_remember(){
 		$post = $this->input->post(NULL, TRUE);
+		$redirect = $this->input->post('redirect');
 		$this->return_auth_code_to_client(
 			$post['client_id'],
 			$post['user_id'],
 			$post['challenge'],
 			$post['challenge_method'],
+			!empty($redirect)? $redirect: '',
 			[],
 			1
 		);
@@ -253,6 +263,7 @@ class Sso extends CI_Controller {
 		$user_id,
 		$challenge,
 		$challenge_method,
+		$redirect = '',
 		$loginpage_params = [],
 		$remember_me = 0
 	){
@@ -308,8 +319,8 @@ class Sso extends CI_Controller {
 		$callback_url = $appdata->domain.$appdata->callback_uri;
 
 		$params = ["code=$code"];
-		if(!empty($postdatas['redirect'])){
-			$params []= 'redirect='.$postdatas['redirect'];
+		if(!empty($redirect)){
+			$params []= 'redirect='.urlencode($redirect);
 		}
 		$url_params = implode('&', $params);
 
