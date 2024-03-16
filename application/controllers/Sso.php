@@ -222,7 +222,7 @@ class Sso extends CI_Controller {
 		if($postdatas['response_type'] == 'code'){
 			$remember_me = !empty($postdatas['remember_me'])? 1: 0;
 			$redirect = $this->input->post('redirect');
-			$this->return_auth_code_to_client(
+			$this->login_response_auth_code(
 				$client_id,
 				$userdata->user_id,
 				$challenge,
@@ -232,7 +232,7 @@ class Sso extends CI_Controller {
 				$loginpage_params
 			);
 		}else if($postdatas['response_type'] == 'token'){
-			$this->return_token_to_client($client_id, $userdata->nip);
+			$this->login_response_token($client_id, $userdata->nip);
 		}
 	}
 
@@ -279,7 +279,7 @@ class Sso extends CI_Controller {
 	public function automatic_login(){
 		$post = $this->input->post(NULL, TRUE);
 		$redirect = $this->input->post('redirect');
-		$this->return_auth_code_to_client(
+		$this->login_response_auth_code(
 			$post['client_id'],
 			$post['user_id'],
 			$post['challenge'],
@@ -289,7 +289,7 @@ class Sso extends CI_Controller {
 		);
 	}
 
-	private function return_auth_code_to_client(
+	private function login_response_auth_code(
 		$client_id, 
 		$user_id,
 		$challenge,
@@ -324,12 +324,12 @@ class Sso extends CI_Controller {
 		redirect("$callback_url?$url_params");
 	}
 
-	private function return_token_to_client($client_id, $nip){
+	private function login_response_token($client_id, $nip){
 		$appdata = $this->app_model->get_by_client_id($client_id);
 		
 		$callback_url = $appdata->domain.$appdata->callback_uri;
 
-		$tokens = $this->generate_access_tokens($nip);
+		$tokens = $this->generate_access_token_for_user($nip);
 
 		$params = [
 			"access_token=$tokens->access_token",
@@ -347,85 +347,27 @@ class Sso extends CI_Controller {
 			http_response_code(401);exit;
 		}
 
-		$grant_object = null;
-		if(in_array($post['grant_type'], ['verify', 'refresh'])){
-			$this->grant_verify_or_refresh();
-		}else if($post['grant_type'] == 'authorization_code'){
-			if(empty($post['code']) || empty($post['verifier'])){
-				http_response_code(401);exit;
-			}
-			$grant_object = $this->grant_authorization_code();
-		}else if($post['grant_type'] == 'client_credentials'){
-			if(empty($post['client_id']) || empty($post['client_secret'])){
-				http_response_code(401);exit;
-			}
-
-			// $grant_object = $this->grant_authorization_code();
+		if($post['grant_type'] == 'authorization_code'){
+			$this->return_grant_type_authorization_code();
 		}else if($post['grant_type'] == 'password'){
-			if(empty($post['username']) || empty($post['password'])){
-				http_response_code(401);exit;
-			}
-
-			// $grant_object = $this->grant_authorization_code();
+			$this->return_grant_type_password();
+		}else if($post['grant_type'] == 'client_credentials'){
+			$this->return_grant_type_client_credentials();
+		}else if(in_array($post['grant_type'], ['verify', 'refresh'])){
+			$this->grant_verify_or_refresh();
 		}else{
 			http_response_code(401);
 			echo 'grant_type of "'.$post['grant_type'].'" is not supported';
 			exit;
 		}
-
-		if($grant_object->remember_me == 1){
-			$this->db
-				->where('user_id', $grant_object->user_id)
-				->update('user', ['remember_token' => $grant_object->remember_token])
-				;
-		}
-		$existing_session = $this->sharedsession_model->check_session($grant_object->shared_session_id);
-		if(empty($existing_session)){ //first time login
-			$status = $this->sharedsession_model->create_session($grant_object->shared_session_id, $grant_object->user_id);
-		}
-		$multi_session_id = self::generate_random_string(64);
-		$appdata = $this->app_model->get_by_client_id($grant_object->client_id);
-		$status = $this->sharedsession_model->create_session_multi($grant_object->shared_session_id, $multi_session_id, $appdata->apps_id);
-
-		$userdata = $this->user_model->get_by_id($grant_object->user_id);
-
-		http_response_code(200);
-		echo json_encode([
-			'status' => 'success',
-			'token_data' => $this->generate_access_tokens($userdata->nip, $multi_session_id),
-			'user' => $this->get_user_info($grant_object->client_id, $grant_object->user_id)
-		]);
 	}
 
-	private function grant_verify_or_refresh(){
-		$payload = $this->verify_bearer();
-
-		$user = $this->user_model->get_by_email_or_nip($payload->nip);
-		$sess = $this->sharedsession_model->check_session_by_multisessionid($payload->msi);
-
-		if(empty($sess)){
-			http_response_code(401);
-			echo 'Expired session';
-			exit;
-		}else if($sess->forced_logout_status != null){
-			$this->sharedsession_model->invalidate($sess->session_id);
-			http_response_code(401);
-			echo $sess->forced_logout_status;
-			exit;
-		}
-
-		$response = ['status' => 'success'];
-		$post = $this->input->post(null, true);
-		if($post['grant_type'] == 'refresh'){
-			$response['data'] = $this->generate_access_tokens($payload->nip, $payload->msi);
-		}
-
-		echo json_encode($response);
-		exit;
-	}
-
-	private function grant_authorization_code(){
+	private function return_grant_type_authorization_code(){
 		$post = $this->input->post(NULL, TRUE);
+
+		if(empty($post['code']) || empty($post['verifier'])){
+			http_response_code(401);exit;
+		}
 
 		$otc = $this->db
 		->from('sso_otc')
@@ -460,10 +402,85 @@ class Sso extends CI_Controller {
 			exit;
 		}
 
-		return $otc;
+		if($otc->remember_me == 1){
+			$this->db
+				->where('user_id', $otc->user_id)
+				->update('user', ['remember_token' => $otc->remember_token])
+				;
+		}
+		$existing_session = $this->sharedsession_model->check_session($otc->shared_session_id);
+		if(empty($existing_session)){ //first time login
+			$status = $this->sharedsession_model->create_session($otc->shared_session_id, $otc->user_id);
+		}
+		$multi_session_id = self::generate_random_string(64);
+		$appdata = $this->app_model->get_by_client_id($otc->client_id);
+		$status = $this->sharedsession_model->create_session_multi($otc->shared_session_id, $multi_session_id, $appdata->apps_id);
+
+		$userdata = $this->user_model->get_by_id($otc->user_id);
+
+		echo json_encode([
+			'status' => 'success',
+			'token_data' => $this->generate_access_token_for_user($userdata->nip, $multi_session_id),
+			'user' => $this->get_user_info($otc->client_id, $otc->user_id)
+		]);
+		exit;
 	}
 
-	private function generate_access_tokens($nip, $multi_session_id = null){
+	private function return_grant_type_password(){
+		$clientsecret_token = $this->verify_basic_auth_header();
+
+		$username = $this->input->post('username', true);
+		$password = $this->input->post('password');
+		
+		if(empty($username) || empty($password)){
+			http_response_code(401);
+			echo 'Missing parameter "username" or "password"';
+			exit;
+		}
+
+		$user = $this->user_model->do_login($username, $password);
+		if(empty($user)){
+			http_response_code(401);
+			echo 'Invalid username or password';
+			exit;
+		}
+
+		$audience_type = 'user';
+		$post = $this->input->post(null, true);
+		if(!empty($post['audience_type'])){
+			$audience_type = $post['audience_type'];
+		}
+
+		if($audience_type == 'user'){
+			echo json_encode($this->generate_access_token_for_user($user->nip));
+		}else if($audience_type == 'app'){
+			$client_secret_arr = explode(':', $clientsecret_token);
+			$tokens = $this->generate_access_token_for_app($client_secret_arr[0]);
+
+			echo json_encode([
+				'access_token' => $tokens->access_token,
+				'refresh_token' => $tokens->refresh_token
+			]);
+		}else{
+			http_response_code(401);
+			echo 'Invalid value for parameter "audience_type"';
+		}
+		exit;
+	}
+
+	private function return_grant_type_client_credentials(){
+		$clientsecret_token = $this->verify_basic_auth_header();
+		$client_secret_arr = explode(':', $clientsecret_token);
+
+		$tokens = $this->generate_access_token_for_app($client_secret_arr[0]);
+
+		echo json_encode([
+			'access_token' => $tokens->access_token,
+			'refresh_token' => $tokens->refresh_token
+		]);
+	}
+
+	private function generate_access_token_for_user($nip, $multi_session_id = null){
 		$iat = time();
 		$payload = array(
 			'iss' => base_url(),
@@ -490,9 +507,82 @@ class Sso extends CI_Controller {
 
 		return json_decode(json_encode($result));
 	}
+
+	private function generate_access_token_for_app($client_id){
+		$iat = time();
+		$payload = array(
+			'iss' => base_url(),
+			'aud' => $client_id,
+			'iat' => $iat,
+			'nbf' => $iat,
+			'exp' => $iat + $this->access_age
+		);
+
+		$payload_refresh = $payload;
+		$payload_refresh['exp'] = $iat + $this->refresh_age;
+
+		$result = [];
+		$result['access_token'] = JWT::encode($payload, $this->server_secret, 'HS256');
+		$result['access_token_expires_in'] = $this->access_age;
+		$result['refresh_token'] = JWT::encode($payload_refresh, $this->server_secret, 'HS256');
+		$result['refresh_token_expires_in'] = $this->refresh_age;
+
+		return json_decode(json_encode($result));
+	}
+
+	private function grant_verify_or_refresh(){
+		$payload = $this->verify_bearer_header();
+
+		$post = $this->input->post(null, true);
+		$grant_type = $post['grant_type'];
+		$response = ['status' => 'success'];
+
+		if(!empty($payload->msi)){
+			$sess = $this->sharedsession_model->check_session_by_multisessionid($payload->msi);
+
+			if(empty($sess)){
+				http_response_code(401);
+				echo 'Expired session';
+				exit;
+			}else if($sess->forced_logout_status != null){
+				$this->sharedsession_model->invalidate($sess->session_id);
+				http_response_code(401);
+				echo $sess->forced_logout_status;
+				exit;
+			}
+
+			if($grant_type == 'refresh'){
+				$response['data'] = $this->generate_access_token_for_user($payload->nip, $payload->msi);
+			}
+		}else if($payload->aud != '*'){
+			$client_id = $payload->aud; //aud value should be "*" or a client_id
+			$apps = $this->app_model->get_by_client_id($client_id);
+
+			if(empty($apps)){
+				http_response_code(401);
+				echo 'Invalid Audience';
+				exit;
+			}
+
+			if($grant_type == 'refresh'){
+				$tokens = $this->generate_access_token_for_app($client_id);
+				$response['data'] = [
+					'access_token' => $tokens->access_token,
+					'refresh_token' => $tokens->refresh_token
+				];
+			}
+		}else{
+			http_response_code(401);
+			echo 'Unknown token type';
+			exit;
+		}
+
+		echo json_encode($response);
+		exit;
+	}
 	
 	public function logout(){
-		$payload = $this->verify_bearer();
+		$payload = $this->verify_bearer_header();
 
 		$status = $this->sharedsession_model->invalidate_by_multisessionid($payload->msi);
 		
@@ -514,7 +604,7 @@ class Sso extends CI_Controller {
 			echo 'Missing client_id';
 			exit;
 		}
-		$payload = $this->verify_bearer();
+		$payload = $this->verify_bearer_header();
 
 		$userdata = $this->user_model->get_by_email_or_nip($payload->nip);
 		$response = [
@@ -709,11 +799,40 @@ class Sso extends CI_Controller {
 		];
 	}
 
-	private function verify_bearer(){
+	private function verify_basic_auth_header(){
+		$basic_token = self::get_header_auth_token('Basic');
+		if(empty($basic_token)){
+			http_response_code(401);exit;
+		}
+		$basic_token_decoded = base64_decode($basic_token, true);
+		if($basic_token_decoded === false){
+			http_response_code(401);exit;
+		}
+		$basic_token_arr = explode(':', $basic_token_decoded);
+		if(count($basic_token_arr) != 2){
+			http_response_code(401);exit;
+		}
+		
+		$client_id = $basic_token_arr[0];
+		$client_secret = $basic_token_arr[1];
+
+		$apps = $this->app_model->get_by_client_id($client_id);
+		if(empty($apps)){
+			http_response_code(401);exit;
+		}
+
+		if($client_secret != $apps->client_secret){
+			http_response_code(401);exit;
+		}
+
+		return $basic_token_decoded;
+	}
+
+	private function verify_bearer_header(){
 		$exception = null;
 
 		try {
-			$bearer = self::GetBearerToken();
+			$bearer = self::get_header_auth_token('Bearer');
 			// JWT::$leeway = 60; //1 min-leeway, should not be mattered since the signature is both signed and verified here
 			$payload = JWT::decode($bearer, new Key($this->server_secret, 'HS256'));
 
@@ -760,9 +879,9 @@ class Sso extends CI_Controller {
 	}
 
 	/**
-	 * get Bearer Token from header
+	 * get token from header
 	 * */
-	private static function GetBearerToken() {
+	private static function get_header_auth_token($type) {
 		$headers = null;
 		if (isset($_SERVER['Authorization'])) {
 			$headers = trim($_SERVER["Authorization"]);
@@ -780,7 +899,9 @@ class Sso extends CI_Controller {
 
 		// HEADER: Get the access token from the header
 		if (!empty($headers)) {
-			if (preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
+			// if (preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
+			$pattern = "/$type\s(\S+)/";
+			if (preg_match($pattern, $headers, $matches)) {
 				return $matches[1];
 			}
 		}
