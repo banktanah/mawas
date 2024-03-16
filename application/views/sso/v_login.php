@@ -56,8 +56,9 @@
             if(!empty($client_id)){
               $username_cache = !empty($this->session->flashdata('username_cache'))? $this->session->flashdata('username_cache'): '';
           ?>
-              <form id="login-form" action="<?php echo base_url().'sso/login' ?>" method="post">
+              <form id="login-form" action="<?php echo base_url().'sso/do_login' ?>" method="post">
                 <input type="hidden" name="client_id" value="<?php echo $client_id ?>">
+                <input type="hidden" name="response_type" value="<?php echo $response_type ?>">
                 <input type="hidden" name="challenge" value="<?php echo $challenge ?>">
                 <input type="hidden" name="challenge_method" value="<?php echo $challenge_method ?>">
                 <input type="hidden" name="redirect" value="<?php echo $redirect ?>">

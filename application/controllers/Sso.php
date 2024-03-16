@@ -36,9 +36,8 @@ class Sso extends CI_Controller {
 		$this->load->model('sharedsession_model');
 	}
 
-	public function index(){
-		$this->login_with_shared_session_if_exists();
-		$this->login_with_remember_token_if_exists();
+	public function login(){
+		$this->login_with_shared_session_or_remember_me();
 
 		$get = $this->input->get(NULL, TRUE);
 		$data = [];
@@ -50,7 +49,7 @@ class Sso extends CI_Controller {
 			$this->session->set_flashdata('error', $get['error']);
 		}
 
-		if(empty($get['client_id'])){
+		if(empty($get['client_id']) || empty($get['response_type'])){
 			$this->session->set_flashdata('error', 'Unauthorized Access');
 		}else{
 			$appdata = $this->app_model->get_by_client_id($get['client_id']);
@@ -59,6 +58,7 @@ class Sso extends CI_Controller {
 				$this->session->set_flashdata('error', 'Unauthorized Access');
 			}else{
 				$data['client_id'] = $get['client_id'];
+				$data['response_type'] = $get['response_type'];
 				$data['challenge'] = $get['challenge'];
 				$data['challenge_method'] = $get['challenge_method'];
 				$data['app_name'] = $appdata->apps_nama;
@@ -77,11 +77,11 @@ class Sso extends CI_Controller {
 		$this->load->view('sso/v_login', $data);
 	}
 	
-	public function login(){
+	public function do_login(){
 		$postdatas = $this->input->post(NULL, TRUE);
-		$redirect_back = 'sso';
+		$redirect_back = 'sso/login';
 
-		if(empty($postdatas['client_id']) || empty($postdatas['challenge'])){
+		if(empty($postdatas['client_id']) || empty($postdatas['response_type']) || empty($postdatas['challenge'])){
 			$this->session->set_flashdata('error', "Unauthorized access !");
 			redirect($redirect_back);
 		}
@@ -96,6 +96,7 @@ class Sso extends CI_Controller {
 
 		$loginpage_params = [
 			"client_id=".$postdatas["client_id"],
+			"response_type=".$postdatas["response_type"],
 			"challenge=".$postdatas["challenge"],
 			"challenge_method=".$postdatas["challenge_method"],
 		];
@@ -144,7 +145,7 @@ class Sso extends CI_Controller {
 			$this->session->set_flashdata('error', "Username/Password harus diisi !");
 			redirect($redirect_back.'?'.implode('&', $loginpage_params));
 		}
-		
+
 		$this->session->set_flashdata('username_cache', $postdatas['username']);
 
 		$username = $postdatas['username'];
@@ -186,91 +187,7 @@ class Sso extends CI_Controller {
 			redirect($redirect_back.'?'.implode('&', $loginpage_params));
 		}
 
-		$remember_me = !empty($postdatas['remember_me'])? 1: 0;
-
-		$redirect = $this->input->post('redirect');
-		$this->return_auth_code_to_client(
-			$client_id,
-			$userdata->user_id,
-			$challenge,
-			$challenge_method,
-			!empty($redirect)? $redirect: '',
-			$loginpage_params,
-			$remember_me
-		);
-	}
-	
-	private function login_with_shared_session_if_exists(){
-		$shsess_id = !empty($_COOKIE[self::COOKIE_SESSION_NAME])? $_COOKIE[self::COOKIE_SESSION_NAME]: null;
-
-		if(empty($shsess_id))return;
-
-		$shsess = $this->sharedsession_model->check_session($shsess_id);
-
-		if(empty($shsess))return;
-
-		$get = $this->input->get(NULL, TRUE);
-		$redirect = $this->input->get('redirect');
-		$this->return_auth_code_to_client(
-			$get['client_id'],
-			$shsess->user_id,
-			$get['challenge'],
-			$get['challenge_method'],
-			!empty($redirect)? $redirect: ''
-		);
-	}
-	
-	private function login_with_remember_token_if_exists(){
-		$remember_token = !empty($_COOKIE[self::COOKIE_REMEMBER_NAME])? $_COOKIE[self::COOKIE_REMEMBER_NAME]: null;
-
-		if(empty($remember_token))return;
-
-		$user = $this->user_model->get_by_remember_token($remember_token);
-
-		if(empty($user))return;
-
-		setcookie(self::COOKIE_SESSION_NAME, self::generate_random_string(64), time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
-		setcookie(self::COOKIE_REMEMBER_NAME, self::generate_random_string(64), time() + (60*60*24*30), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
-
-		$get = $this->input->get(null, true);
-		$data = [
-			'user_id' => $user->user_id,
-			'client_id' => $get['client_id'],
-			'challenge' => $get['challenge'],
-			'challenge_method' => $get['challenge_method'],
-			'redirect' => !empty($get['redirect'])? $get['redirect']: ''
-		];
-
-		$this->load->view('sso/_login_with_remember_token', $data);
-	}
-
-	public function login_via_remember(){
-		$post = $this->input->post(NULL, TRUE);
-		$redirect = $this->input->post('redirect');
-		$this->return_auth_code_to_client(
-			$post['client_id'],
-			$post['user_id'],
-			$post['challenge'],
-			$post['challenge_method'],
-			!empty($redirect)? $redirect: '',
-			[],
-			1
-		);
-	}
-
-	private function return_auth_code_to_client(
-		$client_id, 
-		$user_id,
-		$challenge,
-		$challenge_method,
-		$redirect = '',
-		$loginpage_params = [],
-		$remember_me = 0
-	){
-		$redirect_back = 'sso';
-
 		$appdata = $this->app_model->get_by_client_id($client_id);
-
 		if(empty($appdata)){
 			$this->session->set_flashdata('error', "Unauthorized access !");
 			redirect($redirect_back.'?'.implode('&', $loginpage_params));
@@ -295,12 +212,92 @@ class Sso extends CI_Controller {
 		// 	$permissions []= $loop->akses_role;
 		// }
 
-		$roles = $this->user_model->get_roles($user_id, $client_id);
+		$roles = $this->user_model->get_roles($userdata->user_id, $client_id);
 
 		if(empty($roles)){
 			$this->session->set_flashdata('error', "You do not have access to this application !");
 			redirect($redirect_back.'?'.implode('&', $loginpage_params));
 		}
+
+		if($postdatas['response_type'] == 'code'){
+			$remember_me = !empty($postdatas['remember_me'])? 1: 0;
+			$redirect = $this->input->post('redirect');
+			$this->return_auth_code_to_client(
+				$client_id,
+				$userdata->user_id,
+				$challenge,
+				$challenge_method,
+				!empty($redirect)? $redirect: '',
+				$remember_me,
+				$loginpage_params
+			);
+		}else if($postdatas['response_type'] == 'token'){
+			$this->return_token_to_client($client_id, $userdata->nip);
+		}
+	}
+
+	public function login_with_shared_session_or_remember_me(){
+		$user_id = null;
+
+		$shsess_id = !empty($_COOKIE[self::COOKIE_SESSION_NAME])? $_COOKIE[self::COOKIE_SESSION_NAME]: null;
+		if(!empty($shsess_id)){
+			$shsess = $this->sharedsession_model->check_session($shsess_id);
+			if(!empty($shsess)){
+				$user_id = $shsess->user_id;
+				$this->sharedsession_model->invalidate($shsess->session_id); //session_id and will be regenerated upon auto-login 
+			}
+		}
+
+		$remember_token = !empty($_COOKIE[self::COOKIE_REMEMBER_NAME])? $_COOKIE[self::COOKIE_REMEMBER_NAME]: null;
+		$remember_me = '';
+		if($user_id == null && !empty($remember_token)){
+			$user = $this->user_model->get_by_remember_token($remember_token);
+			if(!empty($user)){
+				$user_id = $user->user_id;
+				$remember_me = 1;
+			}
+		}
+
+		if($user_id == null)return;
+
+		setcookie(self::COOKIE_SESSION_NAME, self::generate_random_string(64), time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
+		setcookie(self::COOKIE_REMEMBER_NAME, self::generate_random_string(64), time() + (60*60*24*30), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
+
+		$get = $this->input->get(null, true);
+		$data = [
+			'user_id' => $user_id,
+			'client_id' => $get['client_id'],
+			'challenge' => $get['challenge'],
+			'challenge_method' => $get['challenge_method'],
+			'remember_me' => $remember_me,
+			'redirect' => (!empty($get['redirect'])? $get['redirect']: '')
+		];
+		
+		$this->load->view('sso/_automatic_login', $data);
+	}
+
+	public function automatic_login(){
+		$post = $this->input->post(NULL, TRUE);
+		$redirect = $this->input->post('redirect');
+		$this->return_auth_code_to_client(
+			$post['client_id'],
+			$post['user_id'],
+			$post['challenge'],
+			$post['challenge_method'],
+			!empty($redirect)? $redirect: '',
+			!empty($post['remember_me'])? 1: 0,
+		);
+	}
+
+	private function return_auth_code_to_client(
+		$client_id, 
+		$user_id,
+		$challenge,
+		$challenge_method,
+		$redirect = '',
+		$remember_me = 0
+	){
+		$appdata = $this->app_model->get_by_client_id($client_id);
 
 		$code = self::generate_random_string(64);
 
@@ -311,7 +308,7 @@ class Sso extends CI_Controller {
 			'shared_session_id' => $_COOKIE[self::COOKIE_SESSION_NAME],
 			'challenge' => $challenge,
 			'challenge_method' => $challenge_method,
-			'timestamp' => (time() + (60 * 5)),
+			'timestamp' => date('Y-m-d H:i:s', time() + (60 * 5)),
 			'remember_me' => $remember_me,
 			'remember_token' => $_COOKIE[self::COOKIE_REMEMBER_NAME]
 		]);
@@ -327,12 +324,108 @@ class Sso extends CI_Controller {
 		redirect("$callback_url?$url_params");
 	}
 
-	public function get_token(){
-		$post = $this->input->post(NULL, TRUE);
+	private function return_token_to_client($client_id, $nip){
+		$appdata = $this->app_model->get_by_client_id($client_id);
+		
+		$callback_url = $appdata->domain.$appdata->callback_uri;
 
-		if(empty($post['code']) || empty($post['verifier'])){
+		$tokens = $this->generate_access_tokens($nip);
+
+		$params = [
+			"access_token=$tokens->access_token",
+			"refresh_token=$tokens->refresh_token"
+		];
+		$url_params = implode('&', $params);
+
+		redirect("$callback_url?$url_params");
+	}
+
+	public function token(){
+		$post = $this->input->post(null, true);
+
+		if(empty($post['grant_type'])){
 			http_response_code(401);exit;
 		}
+
+		$grant_object = null;
+		if(in_array($post['grant_type'], ['verify', 'refresh'])){
+			$this->grant_verify_or_refresh();
+		}else if($post['grant_type'] == 'authorization_code'){
+			if(empty($post['code']) || empty($post['verifier'])){
+				http_response_code(401);exit;
+			}
+			$grant_object = $this->grant_authorization_code();
+		}else if($post['grant_type'] == 'client_credentials'){
+			if(empty($post['client_id']) || empty($post['client_secret'])){
+				http_response_code(401);exit;
+			}
+
+			// $grant_object = $this->grant_authorization_code();
+		}else if($post['grant_type'] == 'password'){
+			if(empty($post['username']) || empty($post['password'])){
+				http_response_code(401);exit;
+			}
+
+			// $grant_object = $this->grant_authorization_code();
+		}else{
+			http_response_code(401);
+			echo 'grant_type of "'.$post['grant_type'].'" is not supported';
+			exit;
+		}
+
+		if($grant_object->remember_me == 1){
+			$this->db
+				->where('user_id', $grant_object->user_id)
+				->update('user', ['remember_token' => $grant_object->remember_token])
+				;
+		}
+		$existing_session = $this->sharedsession_model->check_session($grant_object->shared_session_id);
+		if(empty($existing_session)){ //first time login
+			$status = $this->sharedsession_model->create_session($grant_object->shared_session_id, $grant_object->user_id);
+		}
+		$multi_session_id = self::generate_random_string(64);
+		$appdata = $this->app_model->get_by_client_id($grant_object->client_id);
+		$status = $this->sharedsession_model->create_session_multi($grant_object->shared_session_id, $multi_session_id, $appdata->apps_id);
+
+		$userdata = $this->user_model->get_by_id($grant_object->user_id);
+
+		http_response_code(200);
+		echo json_encode([
+			'status' => 'success',
+			'token_data' => $this->generate_access_tokens($userdata->nip, $multi_session_id),
+			'user' => $this->get_user_info($grant_object->client_id, $grant_object->user_id)
+		]);
+	}
+
+	private function grant_verify_or_refresh(){
+		$payload = $this->verify_bearer();
+
+		$user = $this->user_model->get_by_email_or_nip($payload->nip);
+		$sess = $this->sharedsession_model->check_session_by_multisessionid($payload->msi);
+
+		if(empty($sess)){
+			http_response_code(401);
+			echo 'Expired session';
+			exit;
+		}else if($sess->forced_logout_status != null){
+			$this->sharedsession_model->invalidate($sess->session_id);
+			http_response_code(401);
+			echo $sess->forced_logout_status;
+			exit;
+		}
+
+		$response = ['status' => 'success'];
+		$post = $this->input->post(null, true);
+		if($post['grant_type'] == 'refresh'){
+			$response['data'] = $this->generate_access_tokens($payload->nip, $payload->msi);
+		}
+
+		echo json_encode($response);
+		exit;
+	}
+
+	private function grant_authorization_code(){
+		$post = $this->input->post(NULL, TRUE);
 
 		$otc = $this->db
 		->from('sso_otc')
@@ -361,74 +454,16 @@ class Sso extends CI_Controller {
 			exit;
 		}
 
-		if(time() > $otc->timestamp){
+		if(time() > strtotime($otc->timestamp)){
 			http_response_code(401);
 			echo 'PKCE key expired';
 			exit;
 		}
 
-		if($otc->remember_me == 1){
-			$this->db
-				->where('user_id', $otc->user_id)
-				->update('user', ['remember_token' => $otc->remember_token])
-				;
-		}
-		$existing_session = $this->sharedsession_model->check_session($otc->shared_session_id);
-		if(empty($existing_session)){ //first time login
-			$status = $this->sharedsession_model->create_session($otc->shared_session_id, $otc->user_id);
-		}
-		$multi_session_id = self::generate_random_string(64);
-		$appdata = $this->app_model->get_by_client_id($otc->client_id);
-		$status = $this->sharedsession_model->create_session_multi($otc->shared_session_id, $multi_session_id, $appdata->apps_id);
-
-		$userdata = $this->user_model->get_by_id($otc->user_id);
-		$tokens = $this->generate_access_tokens($userdata->nip, $multi_session_id);
-
-		http_response_code(200);
-		echo json_encode([
-			'access_token' => $tokens->access_token,
-			'refresh_token' => $tokens->refresh_token,
-			'user' => $this->get_user_info($otc->client_id, $otc->user_id)
-		]);
+		return $otc;
 	}
 
-	public function auth(){
-		$post = $this->input->post(NULL, TRUE);
-		
-		if(empty($post['type'])){
-			log_message('error', "Missing required parameter \"type\"");
-			http_response_code(401);
-			echo 'Missing required parameter';
-			exit;
-		}
-		$payload = $this->verify_bearer();
-
-		$user = $this->user_model->get_by_email_or_nip($payload->nip);
-
-		$sess = $this->sharedsession_model->check_session_by_multisessionid($payload->msi);
-
-		if(empty($sess)){
-			http_response_code(401);
-			echo 'Expired session';
-			exit;
-		}else if($sess->forced_logout_status != null){
-			$this->sharedsession_model->invalidate($sess->session_id);
-			http_response_code(401);
-			echo $sess->forced_logout_status;
-			exit;
-		}
-
-		$response = ['status' => 'success'];
-		if($post['type'] == 'refresh'){
-			$tokens = $this->generate_access_tokens($payload->nip, $payload->msi);
-			$response['access_token'] = $tokens->access_token;
-			$response['refresh_token'] = $tokens->refresh_token;
-		}
-
-		echo json_encode($response);
-	}
-
-	private function generate_access_tokens($nip, $multi_session_id){
+	private function generate_access_tokens($nip, $multi_session_id = null){
 		$iat = time();
 		$payload = array(
 			'iss' => base_url(),
@@ -437,16 +472,21 @@ class Sso extends CI_Controller {
 			'iat' => $iat,
 			'nbf' => $iat,
 			'exp' => $iat + $this->access_age,
-			'nip' => $nip,
-			'msi' => $multi_session_id
+			'nip' => $nip
 		);
+
+		if(!empty($multi_session_id)){
+			$payload['msi'] = $multi_session_id;
+		}
 
 		$payload_refresh = $payload;
 		$payload_refresh['exp'] = $iat + $this->refresh_age;
 
 		$result = [];
 		$result['access_token'] = JWT::encode($payload, $this->server_secret, 'HS256');
+		$result['access_token_expires_in'] = $this->access_age;
 		$result['refresh_token'] = JWT::encode($payload_refresh, $this->server_secret, 'HS256');
+		$result['refresh_token_expires_in'] = $this->refresh_age;
 
 		return json_decode(json_encode($result));
 	}
@@ -752,18 +792,18 @@ class Sso extends CI_Controller {
 		return bin2hex(random_bytes(($length-($length%2))/2));
 	}
 
-	private static function get_domain(){
-		$url = '';
-		if(isset($_SERVER['HTTP_HOST'])){
-			$url = $_SERVER['HTTP_HOST'];
-		}else if(isset($_SERVER['SERVER_NAME'])){
-			$url = $_SERVER['SERVER_NAME'];
-		}else if(isset($_SERVER['SERVER_ADDR'])){
-		  $url = $_SERVER['SERVER_ADDR'];
+	private static function get_domain($url = ''){
+		if(empty($url)){
+			if(isset($_SERVER['HTTP_HOST'])){
+				$url = $_SERVER['HTTP_HOST'];
+			}else if(isset($_SERVER['SERVER_NAME'])){
+				$url = $_SERVER['SERVER_NAME'];
+			}else if(isset($_SERVER['SERVER_ADDR'])){
+				$url = $_SERVER['SERVER_ADDR'];
+			}
+			$url = in_array($url, ['127.0.0.1', '0.0.0.0', '::1'])? 'localhost': $url;
 		}
-	
-		$url = in_array($url, ['127.0.0.1', '0.0.0.0', '::1'])? 'localhost': $url;
-	
+
 		$pieces = parse_url($url);
 		$domain = isset($pieces['host'])? $pieces['host']: (isset($pieces['path'])? $pieces['path']: '');
 			
