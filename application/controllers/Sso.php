@@ -66,6 +66,7 @@ class Sso extends CI_Controller {
 				$data['client_home'] = urlencode("$appdata->domain/");
 				$data['recaptcha_site_key'] = $this->config->item('recaptcha')['site_key'];
 				$data['redirect'] = !empty($get['redirect'])? $get['redirect']: '';
+				$data['secret_mode'] = !empty($get['adm'])? $get['adm']: '';
 
 				setcookie(self::COOKIE_SESSION_NAME, self::generate_random_string(64), time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
 				setcookie(self::COOKIE_REMEMBER_NAME, self::generate_random_string(64), time() + (60*60*24*30), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
@@ -76,7 +77,7 @@ class Sso extends CI_Controller {
 
 		$this->load->view('sso/v_login', $data);
 	}
-	
+
 	public function do_login(){
 		$postdatas = $this->input->post(NULL, TRUE);
 		$redirect_back = 'sso/login';
@@ -109,30 +110,32 @@ class Sso extends CI_Controller {
 		 * Recaptcha tutorial: 
 		 * https://wesleybaxterhuber.medium.com/i-finally-figured-out-googles-recaptcha-v3-8f668860f82d
 		 */
-		if(empty($postdatas['g-recaptcha-response'])){
-			$this->session->set_flashdata('error', "No recaptcha-response !");
-			redirect($redirect_back.'?'.implode('&', $loginpage_params));
-		}
-
-		$client = new \GuzzleHttp\Client(); 
-		$res = $client->request('POST', 'https://www.google.com/recaptcha/api/siteverify', [
-			'form_params' => [
-				'secret' => $this->config->item('recaptcha')['secret_key'],
-				'response' => $postdatas['g-recaptcha-response']
-			]
-		]);
-		$status = $res->getStatusCode();
-		if($status != 200){
-			log_message('error', "Hitting recaptcha siteverify-api error, status-code: $status");
-			$this->session->set_flashdata('error', "Failed to verify recaptcha !");
-			redirect($redirect_back.'?'.implode('&', $loginpage_params));
-		}
-		$resJson = json_decode($res->getBody()->getContents());
-		if($resJson->success == true && $resJson->action == 'submit' && $resJson->score >= 0.5) {
-			// valid submission
-		} else {
-			$this->session->set_flashdata('error', "You spamming too much, are you a bot?");
-			redirect($redirect_back.'?'.implode('&', $loginpage_params));
+		if(empty($postdatas['is_admin']) || $postdatas['is_admin'] != 'nocapt'){
+			if(empty($postdatas['g-recaptcha-response'])){
+				$this->session->set_flashdata('error', "No recaptcha-response !");
+				redirect($redirect_back.'?'.implode('&', $loginpage_params));
+			}
+	
+			$client = new \GuzzleHttp\Client(); 
+			$res = $client->request('POST', 'https://www.google.com/recaptcha/api/siteverify', [
+				'form_params' => [
+					'secret' => $this->config->item('recaptcha')['secret_key'],
+					'response' => $postdatas['g-recaptcha-response']
+				]
+			]);
+			$status = $res->getStatusCode();
+			if($status != 200){
+				log_message('error', "Hitting recaptcha siteverify-api error, status-code: $status");
+				$this->session->set_flashdata('error', "Failed to verify recaptcha !");
+				redirect($redirect_back.'?'.implode('&', $loginpage_params));
+			}
+			$resJson = json_decode($res->getBody()->getContents());
+			if($resJson->success == true && $resJson->action == 'submit' && $resJson->score >= 0.5) {
+				// valid submission
+			} else {
+				$this->session->set_flashdata('error', "You spamming too much, are you a bot?");
+				redirect($redirect_back.'?'.implode('&', $loginpage_params));
+			}
 		}
 
 		$client_id = $postdatas['client_id'];
