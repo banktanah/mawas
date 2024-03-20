@@ -110,33 +110,33 @@ class Sso extends CI_Controller {
 		 * Recaptcha tutorial: 
 		 * https://wesleybaxterhuber.medium.com/i-finally-figured-out-googles-recaptcha-v3-8f668860f82d
 		 */
-		if(empty($postdatas['is_admin']) || $postdatas['is_admin'] != 'nocapt'){
-			if(empty($postdatas['g-recaptcha-response'])){
-				$this->session->set_flashdata('error', "No recaptcha-response !");
-				redirect($redirect_back.'?'.implode('&', $loginpage_params));
-			}
+		// if(empty($postdatas['is_admin']) || $postdatas['is_admin'] != 'nocapt'){
+		// 	if(empty($postdatas['g-recaptcha-response'])){
+		// 		$this->session->set_flashdata('error', "No recaptcha-response !");
+		// 		redirect($redirect_back.'?'.implode('&', $loginpage_params));
+		// 	}
 	
-			$client = new \GuzzleHttp\Client(); 
-			$res = $client->request('POST', 'https://www.google.com/recaptcha/api/siteverify', [
-				'form_params' => [
-					'secret' => $this->config->item('recaptcha')['secret_key'],
-					'response' => $postdatas['g-recaptcha-response']
-				]
-			]);
-			$status = $res->getStatusCode();
-			if($status != 200){
-				log_message('error', "Hitting recaptcha siteverify-api error, status-code: $status");
-				$this->session->set_flashdata('error', "Failed to verify recaptcha !");
-				redirect($redirect_back.'?'.implode('&', $loginpage_params));
-			}
-			$resJson = json_decode($res->getBody()->getContents());
-			if($resJson->success == true && $resJson->action == 'submit' && $resJson->score >= 0.5) {
-				// valid submission
-			} else {
-				$this->session->set_flashdata('error', "You spamming too much, are you a bot?");
-				redirect($redirect_back.'?'.implode('&', $loginpage_params));
-			}
-		}
+		// 	$client = new \GuzzleHttp\Client(); 
+		// 	$res = $client->request('POST', 'https://www.google.com/recaptcha/api/siteverify', [
+		// 		'form_params' => [
+		// 			'secret' => $this->config->item('recaptcha')['secret_key'],
+		// 			'response' => $postdatas['g-recaptcha-response']
+		// 		]
+		// 	]);
+		// 	$status = $res->getStatusCode();
+		// 	if($status != 200){
+		// 		log_message('error', "Hitting recaptcha siteverify-api error, status-code: $status");
+		// 		$this->session->set_flashdata('error', "Failed to verify recaptcha !");
+		// 		redirect($redirect_back.'?'.implode('&', $loginpage_params));
+		// 	}
+		// 	$resJson = json_decode($res->getBody()->getContents());
+		// 	if($resJson->success == true && $resJson->action == 'submit' && $resJson->score >= 0.5) {
+		// 		// valid submission
+		// 	} else {
+		// 		$this->session->set_flashdata('error', "You spamming too much, are you a bot?");
+		// 		redirect($redirect_back.'?'.implode('&', $loginpage_params));
+		// 	}
+		// }
 
 		$client_id = $postdatas['client_id'];
 		$challenge = $postdatas['challenge'];
