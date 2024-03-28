@@ -62,7 +62,7 @@
                 <input type="hidden" name="challenge" value="<?php echo $challenge ?>">
                 <input type="hidden" name="challenge_method" value="<?php echo $challenge_method ?>">
                 <input type="hidden" name="redirect" value="<?php echo $redirect ?>">
-                <input type="hidden" name="is_admin" value="<?php echo $secret_mode ?>">
+                <input type="hidden" name="a" value="<?php echo $secret_mode ?>">
 
                 <div class="form-group has-feedback">
                   <input type="text" id="text_username" class="form-control" placeholder="NIP/Email" name="username" value="<?=$username_cache?>">

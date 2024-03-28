@@ -66,10 +66,7 @@ class Sso extends CI_Controller {
 				$data['client_home'] = urlencode("$appdata->domain/");
 				$data['recaptcha_site_key'] = $this->config->item('recaptcha')['site_key'];
 				$data['redirect'] = !empty($get['redirect'])? $get['redirect']: '';
-				$data['secret_mode'] = !empty($get['adm'])? $get['adm']: '';
-
-				setcookie(self::COOKIE_SESSION_NAME, self::generate_random_string(64), time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
-				setcookie(self::COOKIE_REMEMBER_NAME, self::generate_random_string(64), time() + (60*60*24*30), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
+				$data['secret_mode'] = !empty($get['a'])? $get['a']: '';
 			}
 		}
 
@@ -110,33 +107,33 @@ class Sso extends CI_Controller {
 		 * Recaptcha tutorial: 
 		 * https://wesleybaxterhuber.medium.com/i-finally-figured-out-googles-recaptcha-v3-8f668860f82d
 		 */
-		// if(empty($postdatas['is_admin']) || $postdatas['is_admin'] != 'nocapt'){
-		// 	if(empty($postdatas['g-recaptcha-response'])){
-		// 		$this->session->set_flashdata('error', "No recaptcha-response !");
-		// 		redirect($redirect_back.'?'.implode('&', $loginpage_params));
-		// 	}
+		if(empty($postdatas['a'])){
+			if(empty($postdatas['g-recaptcha-response'])){
+				$this->session->set_flashdata('error', "No recaptcha-response !");
+				redirect($redirect_back.'?'.implode('&', $loginpage_params));
+			}
 	
-		// 	$client = new \GuzzleHttp\Client(); 
-		// 	$res = $client->request('POST', 'https://www.google.com/recaptcha/api/siteverify', [
-		// 		'form_params' => [
-		// 			'secret' => $this->config->item('recaptcha')['secret_key'],
-		// 			'response' => $postdatas['g-recaptcha-response']
-		// 		]
-		// 	]);
-		// 	$status = $res->getStatusCode();
-		// 	if($status != 200){
-		// 		log_message('error', "Hitting recaptcha siteverify-api error, status-code: $status");
-		// 		$this->session->set_flashdata('error', "Failed to verify recaptcha !");
-		// 		redirect($redirect_back.'?'.implode('&', $loginpage_params));
-		// 	}
-		// 	$resJson = json_decode($res->getBody()->getContents());
-		// 	if($resJson->success == true && $resJson->action == 'submit' && $resJson->score >= 0.5) {
-		// 		// valid submission
-		// 	} else {
-		// 		$this->session->set_flashdata('error', "You spamming too much, are you a bot?");
-		// 		redirect($redirect_back.'?'.implode('&', $loginpage_params));
-		// 	}
-		// }
+			$client = new \GuzzleHttp\Client(); 
+			$res = $client->request('POST', 'https://www.google.com/recaptcha/api/siteverify', [
+				'form_params' => [
+					'secret' => $this->config->item('recaptcha')['secret_key'],
+					'response' => $postdatas['g-recaptcha-response']
+				]
+			]);
+			$status = $res->getStatusCode();
+			if($status != 200){
+				log_message('error', "Hitting recaptcha siteverify-api error, status-code: $status");
+				$this->session->set_flashdata('error', "Failed to verify recaptcha !");
+				redirect($redirect_back.'?'.implode('&', $loginpage_params));
+			}
+			$resJson = json_decode($res->getBody()->getContents());
+			if($resJson->success == true && $resJson->action == 'submit' && $resJson->score >= 0.5) {
+				// valid submission
+			} else {
+				$this->session->set_flashdata('error', "You spamming too much, are you a bot?");
+				redirect($redirect_back.'?'.implode('&', $loginpage_params));
+			}
+		}
 
 		$client_id = $postdatas['client_id'];
 		$challenge = $postdatas['challenge'];
@@ -263,32 +260,15 @@ class Sso extends CI_Controller {
 
 		if($user_id == null)return;
 
-		setcookie(self::COOKIE_SESSION_NAME, self::generate_random_string(64), time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
-		setcookie(self::COOKIE_REMEMBER_NAME, self::generate_random_string(64), time() + (60*60*24*30), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
-
 		$get = $this->input->get(null, true);
-		$data = [
-			'user_id' => $user_id,
-			'client_id' => $get['client_id'],
-			'challenge' => $get['challenge'],
-			'challenge_method' => $get['challenge_method'],
-			'remember_me' => $remember_me,
-			'redirect' => (!empty($get['redirect'])? $get['redirect']: '')
-		];
-		
-		$this->load->view('sso/_automatic_login', $data);
-	}
 
-	public function automatic_login(){
-		$post = $this->input->post(NULL, TRUE);
-		$redirect = $this->input->post('redirect');
 		$this->login_response_auth_code(
-			$post['client_id'],
-			$post['user_id'],
-			$post['challenge'],
-			$post['challenge_method'],
-			!empty($redirect)? $redirect: '',
-			!empty($post['remember_me'])? 1: 0,
+			$get['client_id'],
+			$user_id,
+			$get['challenge'],
+			$get['challenge_method'],
+			(!empty($get['redirect'])? $get['redirect']: ''),
+			$remember_me,
 		);
 	}
 
@@ -303,19 +283,24 @@ class Sso extends CI_Controller {
 		$appdata = $this->app_model->get_by_client_id($client_id);
 
 		$code = self::generate_random_string(64);
+		$session_id = self::generate_random_string(64);
+		$remember_token = self::generate_random_string(64);
 
 		$this->db->insert('sso_otc', [
 			'code' => $code,
 			'client_id' => $client_id,
 			'user_id' => $user_id,
-			'shared_session_id' => $_COOKIE[self::COOKIE_SESSION_NAME],
+			'shared_session_id' => $session_id,
 			'challenge' => $challenge,
 			'challenge_method' => $challenge_method,
 			'timestamp' => date('Y-m-d H:i:s', time() + (60 * 5)),
 			'remember_me' => $remember_me,
-			'remember_token' => $_COOKIE[self::COOKIE_REMEMBER_NAME]
+			'remember_token' => $remember_token
 		]);
 		
+		setcookie(self::COOKIE_SESSION_NAME, $session_id, time() + (60*60*24*7), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
+		setcookie(self::COOKIE_REMEMBER_NAME, $remember_token, time() + (60*60*24*30), $_ENV['BASE_URI'].'/sso', self::get_domain(), false, true);
+
 		$callback_url = $appdata->domain.$appdata->callback_uri;
 
 		$params = ["code=$code"];
@@ -420,7 +405,7 @@ class Sso extends CI_Controller {
 		$status = $this->sharedsession_model->create_session_multi($otc->shared_session_id, $multi_session_id, $appdata->apps_id);
 
 		$userdata = $this->user_model->get_by_id($otc->user_id);
-
+		
 		echo json_encode([
 			'status' => 'success',
 			'token_data' => $this->generate_access_token_for_user($userdata->nip, $multi_session_id),
