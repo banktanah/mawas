@@ -100,7 +100,7 @@ class Sso extends CI_Controller {
 		];
 
 		if(!empty($postdatas["redirect"])){
-			$loginpage_params []= "redirect=".$postdatas["redirect"];
+			$loginpage_params []= "redirect=".urlencode($postdatas["redirect"]);
 		}
 
 		/**
