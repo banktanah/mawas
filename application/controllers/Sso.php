@@ -21,6 +21,8 @@ class Sso extends CI_Controller {
 
 	private const COOKIE_SESSION_NAME = 'mwsshsess';
 	private const COOKIE_REMEMBER_NAME = 'mwsrmbt';
+    private const COOKIE_ACCESS_TOKEN_NAME = 'mwsat';
+    private const COOKIE_REFRESH_TOKEN_NAME = 'mwsrt';
 
 	function __construct(){
 		parent::__construct();
@@ -37,6 +39,7 @@ class Sso extends CI_Controller {
 	}
 
 	public function login(){
+		$this->check_if_already_logged_in();
 		$this->login_with_shared_session_or_remember_me();
 
 		$get = $this->input->get(NULL, TRUE);
@@ -233,6 +236,32 @@ class Sso extends CI_Controller {
 			);
 		}else if($postdatas['response_type'] == 'token'){
 			$this->login_response_token($client_id, $userdata->nip);
+		}
+	}
+
+	public function check_if_already_logged_in(){
+		$get = $this->input->get(NULL, TRUE);
+		$redirect = !empty($get['redirect'])? $get['redirect']: '';
+
+		if(empty($redirect)){
+			$app = $this->app_model->get_by_client_id($get['client_id']);
+			$redirect = $app->domain.$app->redirect_uri;
+		}
+
+		$access_token = !empty($_COOKIE[self::COOKIE_ACCESS_TOKEN_NAME])? $_COOKIE[self::COOKIE_ACCESS_TOKEN_NAME]: null;
+		if(!empty($access_token)){
+			try{
+				$this->verify_access_refresh_token($access_token);
+				redirect($redirect);
+			}catch(Exception $e){}
+		}
+
+		$refresh_token = !empty($_COOKIE[self::COOKIE_REFRESH_TOKEN_NAME])? $_COOKIE[self::COOKIE_REFRESH_TOKEN_NAME]: null;
+		if(!empty($refresh_token)){
+			try{
+				$this->verify_access_refresh_token($refresh_token);
+				redirect($redirect);
+			}catch(Exception $e){}
 		}
 	}
 
@@ -821,10 +850,8 @@ class Sso extends CI_Controller {
 
 		try {
 			$bearer = self::get_header_auth_token('Bearer');
-			// JWT::$leeway = 60; //1 min-leeway, should not be mattered since the signature is both signed and verified here
-			$payload = JWT::decode($bearer, new Key($this->server_secret, 'HS256'));
 
-			return $payload;
+			return $this->verify_access_refresh_token($bearer);
 		} catch (InvalidArgumentException $e) {
 			// provided key/key-array is empty or malformed.
 			http_response_code(500);
@@ -863,6 +890,17 @@ class Sso extends CI_Controller {
 		if(!empty($exception)){
 			echo $exception->getMessage();
 			exit;
+		}
+	}
+
+	private function verify_access_refresh_token($token){
+		try {
+			// JWT::$leeway = 60; //1 min-leeway, should not be mattered since the signature is both signed and verified here
+			$payload = JWT::decode($token, new Key($this->server_secret, 'HS256'));
+
+			return $payload;
+		} catch (Exception $e) {
+			throw $e;
 		}
 	}
 
