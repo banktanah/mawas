@@ -20,6 +20,8 @@
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.8/css/select2.min.css">
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.8/js/select2.min.js"></script>
+
+	<script src="<?php echo base_url(); ?>assets/bower_components/jquery/dist/jquery.min.js"></script>
 </head>
 <body class="hold-transition skin-blue sidebar-mini">
 	<div class="wrapper">
@@ -47,11 +49,11 @@
 								<?php
 									if (empty($user->foto_path)) {
 								?>
-								<img src="<?= base_url().'gambar/default_foto.png'; ?>" class="user-image" alt="User Image">
+										<img src="<?= base_url().'gambar/default_foto.png'; ?>" class="user-image" alt="User Image">
 								<?php
 									}else{
 								?>
-								<img src="<?= $user->foto_path; ?>" class="user-image" alt="User Image">
+										<img src="<?= $user->foto_path; ?>" class="user-image" alt="User Image">
 								<?php
 									}
 								?>
@@ -62,11 +64,11 @@
 									<?php
 										if (empty($user->foto_path)) {
 									?>
-									<img src="<?= base_url().'gambar/default_foto.png'; ?>" class="user-image" alt="User Image">
+											<img src="<?= base_url().'gambar/default_foto.png'; ?>" class="user-image" alt="User Image">
 									<?php
 										}else{
 									?>
-									<img src="<?= $user->foto_path; ?>" class="user-image" alt="User Image">
+											<img src="<?= $user->foto_path; ?>" class="user-image" alt="User Image">
 									<?php
 										}
 									?>			
@@ -99,11 +101,11 @@
 						<?php
 							if (empty($user->foto_path)) {
 						?>
-						<img src="<?= base_url().'gambar/default_foto.png'; ?>" style="height: 45px; width: 45px;" class="img-circle" alt="User Image">
+								<img src="<?= base_url().'gambar/default_foto.png'; ?>" style="height: 45px; width: 45px;" class="img-circle" alt="User Image">
 						<?php
 							}else{
 						?>
-						<img src="<?= $user->foto_path; ?>" style="height: 45px; width: 45px;" class="img-circle" alt="User Image">
+								<img src="<?= $user->foto_path; ?>" style="height: 45px; width: 45px;" class="img-circle" alt="User Image">
 						<?php
 							}
 						?>
@@ -125,85 +127,103 @@
 					<?php 
 						if($this->session->userdata('hrm_level') == "Admin" || $this->session->userdata('hrm_level') == "Superadmin"){
 					?>
-					<!-- <li>
-						<a href="<?php //echo base_url().'dashboard' ?>">
-							<i class="fa fa-dashboard"></i>
-							<span>DASHBOARD</span>
-						</a>
-					</li> -->
+							<!-- <li>
+								<a href="<?php //echo base_url().'dashboard' ?>">
+									<i class="fa fa-dashboard"></i>
+									<span>DASHBOARD</span>
+								</a>
+							</li> -->
+							<li>
+								<a href="<?php echo base_url().'pegawai?is_active=TRUE' ?>">
+									<i class="fa fa-drivers-license"></i>
+									<span>DATA PEGAWAI</span>
+								</a>
+							</li>
 
-					<li>
-						<a href="<?php echo base_url().'pegawai?is_active=TRUE' ?>">
-							<i class="fa fa-drivers-license"></i>
-							<span>DATA PEGAWAI</span>
-						</a>
-					</li>
+							<?php 
+								if($this->session->userdata('hrm_level') == "Superadmin"){
+							?>
+									<li>
+										<a href="<?php echo base_url().'user' ?>">
+											<i class="fa fa-envelope"></i>
+											<span>AKUN PEGAWAI</span>
+										</a>
+									</li>
+									<li>
+										<a href="<?php echo base_url().'user/user_dummy' ?>">
+											<i class="fa fa-envelope"></i>
+											<span>AKUN DUMMY</span>
+										</a>
+									</li>
 
-					<?php 
-						if($this->session->userdata('hrm_level') == "Superadmin"){
-					?>
+									<li>
+										<a href="<?php echo base_url().'apps' ?>">
+											<i class="fa fa-exclamation-triangle"></i>
+											<span>APLIKASI</span>
+										</a>
+									</li>
 
-					<li>
-						<a href="<?php echo base_url().'user' ?>">
-							<i class="fa fa-envelope"></i>
-							<span>AKUN PEGAWAI</span>
-						</a>
-					</li>
+									<li class="treeview">
+										<a href="#">
+											<i class="fa fa-group"></i> <span>AKSES</span>
+											<span class="pull-right-container">
+												<i class="fa fa-angle-left pull-right"></i>
+											</span>
+										</a>
+										<ul class="treeview-menu">
+											<li>
+												<a href="<?php echo base_url().'akses/group' ?>">
+													<i class="fa fa-exclamation-triangle"></i>
+													<span>USER GROUP</span>
+												</a>
+											</li>
+											<li>
+												<a href="<?php echo base_url().'akses/individual' ?>">
+													<i class="fa fa-exclamation-triangle"></i>
+													<span>USER INDIVIDUAL</span>
+												</a>
+											</li>
+										</ul>
+									</li>
+							<?php
+								}
+							?>
 
-					<li>
-						<a href="<?php echo base_url().'user/user_dummy' ?>">
-							<i class="fa fa-envelope"></i>
-							<span>AKUN DUMMY</span>
-						</a>
-					</li>
+							<li class="treeview">
+								<a href="#">
+									<i class="fa fa-group"></i> <span>ORGANISASI</span>
+									<span class="pull-right-container">
+										<i class="fa fa-angle-left pull-right"></i>
+									</span>
+								</a>
+								<ul class="treeview-menu">
+									<!-- <li><a href="<?php //echo base_url().'dashboard/jabatan' ?>">&nbsp; &nbsp; JABATAN</a></li> -->
+									<!-- <li><a href="<?php //echo base_url().'dashboard/struktur' ?>">&nbsp; &nbsp; STRUKTUR</a></li> -->
+									<li><a href="<?php echo base_url().'organisasi' ?>">&nbsp; &nbsp; STRUKTUR</a></li>
+								</ul>
+							</li>
 
-					<li>
-						<a href="<?php echo base_url().'apps' ?>">
-							<i class="fa fa-exclamation-triangle"></i>
-							<span>AKSES APLIKASI</span>
-						</a>
-					</li>
-
-					<?php
-						}
-					?>
-
-					<li class="treeview">
-						<a href="#">
-							<i class="fa fa-group"></i> <span>ORGANISASI</span>
-							<span class="pull-right-container">
-								<i class="fa fa-angle-left pull-right"></i>
-							</span>
-						</a>
-						<ul class="treeview-menu">
-							<!-- <li><a href="<?php //echo base_url().'dashboard/jabatan' ?>">&nbsp; &nbsp; JABATAN</a></li> -->
-							<!-- <li><a href="<?php //echo base_url().'dashboard/struktur' ?>">&nbsp; &nbsp; STRUKTUR</a></li> -->
-							<li><a href="<?php echo base_url().'organisasi' ?>">&nbsp; &nbsp; STRUKTUR</a></li>
-						</ul>
-					</li>
-
-					<li class="treeview">
-						<a href="#">
-							<i class="fa fa-gears"></i> <span>DATA MASTER</span>
-							<span class="pull-right-container">
-								<i class="fa fa-angle-left pull-right"></i>
-							</span>
-						</a>
-						<ul class="treeview-menu">
-							<!-- <li><a href="<?php //echo base_url().'dashboard/kategori' ?>">&nbsp; &nbsp; KATEGORI</a></li>
-							<li><a href="<?php //echo base_url().'dashboard/sub' ?>">&nbsp; &nbsp; SUB KATEGORI</a></li> -->
-							<li><a href="<?php echo base_url().'deputi' ?>">&nbsp; &nbsp; DEPUTI</a></li>
-							<li><a href="<?php echo base_url().'divisi' ?>">&nbsp; &nbsp; DIVISI</a></li>
-							<li><a href="<?php echo base_url().'bagian' ?>">&nbsp; &nbsp; DIVISI BAGIAN</a></li>
-							<li><a href="<?php echo base_url().'status' ?>">&nbsp; &nbsp; STATUS KEPEGAWAIAN</a></li>
-							<li><a href="<?php echo base_url().'level' ?>">&nbsp; &nbsp; LEVEL PEGAWAI</a></li>
-							<li><a href="<?php echo base_url().'pendidikan' ?>">&nbsp; &nbsp; PENDIDIKAN</a></li>
-							<!-- <li><a href="<?php //echo base_url().'dashboard/apps' ?>">&nbsp; &nbsp; APLIKASI</a></li> -->
-							<li><a href="<?php echo base_url().'jabatan' ?>">&nbsp; &nbsp; JABATAN</a></li>
-							<li><a href="<?php echo base_url().'role' ?>">&nbsp; &nbsp; ROLE</a></li>
-						</ul>
-					</li>
-
+							<li class="treeview">
+								<a href="#">
+									<i class="fa fa-gears"></i> <span>DATA MASTER</span>
+									<span class="pull-right-container">
+										<i class="fa fa-angle-left pull-right"></i>
+									</span>
+								</a>
+								<ul class="treeview-menu">
+									<!-- <li><a href="<?php //echo base_url().'dashboard/kategori' ?>">&nbsp; &nbsp; KATEGORI</a></li>
+									<li><a href="<?php //echo base_url().'dashboard/sub' ?>">&nbsp; &nbsp; SUB KATEGORI</a></li> -->
+									<li><a href="<?php echo base_url().'deputi' ?>">&nbsp; &nbsp; DEPUTI</a></li>
+									<li><a href="<?php echo base_url().'divisi' ?>">&nbsp; &nbsp; DIVISI</a></li>
+									<li><a href="<?php echo base_url().'bagian' ?>">&nbsp; &nbsp; DIVISI BAGIAN</a></li>
+									<li><a href="<?php echo base_url().'status' ?>">&nbsp; &nbsp; STATUS KEPEGAWAIAN</a></li>
+									<li><a href="<?php echo base_url().'level' ?>">&nbsp; &nbsp; LEVEL PEGAWAI</a></li>
+									<li><a href="<?php echo base_url().'pendidikan' ?>">&nbsp; &nbsp; PENDIDIKAN</a></li>
+									<!-- <li><a href="<?php //echo base_url().'dashboard/apps' ?>">&nbsp; &nbsp; APLIKASI</a></li> -->
+									<li><a href="<?php echo base_url().'jabatan' ?>">&nbsp; &nbsp; JABATAN</a></li>
+									<li><a href="<?php echo base_url().'role' ?>">&nbsp; &nbsp; ROLE</a></li>
+								</ul>
+							</li>
 					<?php
 						}
 					?>
@@ -211,14 +231,12 @@
 					<?php 
 						if($this->session->userdata('hrm_level') == "Pegawai"){
 					?>
-
-					<li>
-						<a href="<?php echo base_url().'user/profil' ?>">
-							<i class="fa fa-user"></i>
-							<span>PROFIL</span>
-						</a>
-					</li>
-
+							<li>
+								<a href="<?php echo base_url().'user/profil' ?>">
+									<i class="fa fa-user"></i>
+									<span>PROFIL</span>
+								</a>
+							</li>
 					<?php
 						}
 					?>

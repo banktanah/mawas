@@ -76,13 +76,13 @@ class Pegawai extends CI_Controller {
 		//localhost
 		//$api_url = 'http://localhost/instapro/services/get_perolehans';
 		//prod server
-		$api_url = 'http://10.254.42.26/instapro/services/get_perolehans';
+		// $api_url = 'http://10.254.42.26/instapro/services/get_perolehans';
 		// Read JSON file
-		$json_data = file_get_contents($api_url);
+		// $json_data = file_get_contents($api_url);
 		// Decode JSON data into PHP array
-		$perolehans = json_decode($json_data);
+		// $perolehans = json_decode($json_data);
 
-		$data['perolehans'] = $perolehans;
+		// $data['perolehans'] = $perolehans;
 
 		$this->load->view('template/v_header');
 		$this->load->view('pegawai/v_pegawai',$data);

@@ -78,5 +78,130 @@ class Akses extends CI_Controller {
 		$this->session->set_flashdata('success', 'Berhasil menghapus akses.');	
 		redirect(base_url().'akses/akses/'.$apps_id);
 	}
+	
+	public function group()
+	{
+		$groups = $this->db
+		->select('*')
+		->from('user_group')
+		->get()
+		->result_array();
+
+		$mod_groups = [];
+		foreach($groups as $group){
+			$access = $this->db
+			->select('a.apps_id, a.apps_nama, agg.role')
+			->from('access_grant_group agg')
+			->join('apps as a', 'agg.apps_id = a.apps_id')
+			->get()
+			->result_array();
+			;
+
+			$group['access'] = $access;
+			$mod_groups []= json_decode(json_encode($group));
+		}
+
+		// $existing_group_ids = [];
+		// foreach($mod_groups as $group){
+		// 	$existing_group_ids []= $group->apps_id;
+		// }
+
+		$data['apps'] = $this->db
+		->select('apps_id, apps_nama')
+		->from('apps')
+		// ->where_not_in('apps_id', $existing_group_ids)
+		->get()
+		->result();
+
+		$data['roles'] = $this->db->query('SELECT `role` FROM access_grant_group UNION SELECT `role` FROM access_grant')->result();
+
+		$data['groups'] = json_decode(json_encode($mod_groups));
+		$this->load->view('template/v_header');
+		$this->load->view('master/v_akses_group',$data);
+		$this->load->view('template/v_footer');
+	}
+
+	public function group_add(){
+		$post = $this->input->post(null, true);
+
+		$role = !empty($post['role_custom'])? $post['role_custom']: $post['role'];
+		$existing = $this->db
+		->select('*')
+		->from('access_grant_group')
+		->where('apps_id', $post['apps_id'])
+		->where('role', $role)
+		->get()
+		->num_rows();
+		;
+		if($existing != 0){
+			$this->session->set_flashdata('error', 'The specified role already exists');
+			redirect('akses/group');
+			exit;
+		}
+
+		$status = $this->db->insert('access_grant_group', [
+			'user_group_id' => $post['user_group_id'],
+			'apps_id' => $post['apps_id'],
+			'role' => $role
+		]);
+
+		$this->session->set_flashdata('success', "Add role \"".$role."\" berhasil");
+		redirect('akses/group');
+	}
+
+	public function group_delete(){
+		$post = $this->input->post(null, true);
+
+		$status = $this->db->delete('access_grant_group', [
+			'apps_id' => $post['apps_id'],
+			'role' => $post['role']
+		]);
+
+		$this->session->set_flashdata('success', "Hapus role \"".$post['role']."\" berhasil");
+		redirect('akses/group');
+	}
+	
+	public function personal($id)
+	{
+		$groups = $this->db
+		->select('user_id, user_nama, user_username, nip')
+		->from('user')
+		->get()
+		->result();
+
+		$mod_groups = [];
+		foreach($groups as $group){
+			$access = $this->db
+			->select('a.apps_id, a.apps_nama, agg.role')
+			->from('access_grant_group agg')
+			->join('user_group ug', 'agg.apps_id = a.apps_id')
+			->get()
+			->result_array();
+			;
+
+			$group['access'] = $access;
+			$mod_groups []= json_decode(json_encode($group));
+		}
+
+		// $existing_group_ids = [];
+		// foreach($mod_groups as $group){
+		// 	$existing_group_ids []= $group->apps_id;
+		// }
+
+		$data['apps'] = $this->db
+		->select('apps_id, apps_nama')
+		->from('apps')
+		// ->where_not_in('apps_id', $existing_group_ids)
+		->get()
+		->result();
+
+		$data['roles'] = $this->db->query('SELECT `role` FROM access_grant_group UNION SELECT `role` FROM access_grant')->result();
+
+		$data['groups'] = json_decode(json_encode($mod_groups));
+
+		$this->load->view('template/v_header');
+		$this->load->view('master/v_akses_personal',$data);
+		$this->load->view('template/v_footer');
+	}
 }
 ?>
