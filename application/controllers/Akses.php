@@ -93,6 +93,7 @@ class Akses extends CI_Controller {
 			->select('a.apps_id, a.apps_nama, agg.role')
 			->from('access_grant_group agg')
 			->join('apps as a', 'agg.apps_id = a.apps_id')
+			->where('agg.user_group_id', $group['user_group_id'])
 			->get()
 			->result_array();
 			;
@@ -121,13 +122,47 @@ class Akses extends CI_Controller {
 		$this->load->view('template/v_footer');
 	}
 
+	public function user_group_add(){
+		$post = $this->input->post(null, true);
+
+		$existing = $this->db
+		->select('*')
+		->from('user_group')
+		->where('name', $post['group_name'])
+		->get()
+		->num_rows();
+		;
+		if($existing != 0){
+			$this->session->set_flashdata('error', 'The specified role already exists');
+			redirect('akses/group');
+			exit;
+		}
+
+		$status = $this->db->insert('user_group', ['name' => $post['group_name']]);
+
+		$this->session->set_flashdata('success', "Add user-group \"".$post['group_name']."\" berhasil");
+		redirect('akses/group');
+	}
+
+	public function user_group_delete(){
+		$get = $this->input->get(null, true);
+
+		$status = $this->db->delete('user_group', [
+			'user_group_id' => $get['user_group_id']
+		]);
+
+		$this->session->set_flashdata('success', "Hapus user-group \"".$get['user_group_id']."\" berhasil");
+		redirect('akses/group');
+	}
+ 
 	public function group_add(){
 		$post = $this->input->post(null, true);
 
-		$role = !empty($post['role_custom'])? $post['role_custom']: $post['role'];
+		$role = isset($post['is_custom_role'])? $post['role_custom']: $post['role'];
 		$existing = $this->db
 		->select('*')
 		->from('access_grant_group')
+		->where('user_group_id', $post['user_group_id'])
 		->where('apps_id', $post['apps_id'])
 		->where('role', $role)
 		->get()
@@ -161,43 +196,42 @@ class Akses extends CI_Controller {
 		redirect('akses/group');
 	}
 	
-	public function personal($id)
+	public function personal()
 	{
-		$groups = $this->db
+		$user_raws = $this->db
 		->select('user_id, user_nama, user_username, nip')
 		->from('user')
 		->get()
-		->result();
+		->result_array();
 
-		$mod_groups = [];
-		foreach($groups as $group){
+		$users = [];
+		foreach($user_raws as $row_user){
 			$access = $this->db
-			->select('a.apps_id, a.apps_nama, agg.role')
-			->from('access_grant_group agg')
-			->join('user_group ug', 'agg.apps_id = a.apps_id')
+			->select('
+				ag.user_id, 
+				ag.apps_id, 
+				app.apps_nama, 
+				ag.role,
+				ag.grant_type
+			')
+			->from('access_grant ag')
+			->join('apps app', 'ag.apps_id = app.apps_id')
+			->where('ag.user_id', $row_user['user_id'])
 			->get()
 			->result_array();
 			;
 
-			$group['access'] = $access;
-			$mod_groups []= json_decode(json_encode($group));
+			$row_user['access'] = $access;
+			$users []= $row_user;
 		}
-
-		// $existing_group_ids = [];
-		// foreach($mod_groups as $group){
-		// 	$existing_group_ids []= $group->apps_id;
-		// }
 
 		$data['apps'] = $this->db
 		->select('apps_id, apps_nama')
 		->from('apps')
-		// ->where_not_in('apps_id', $existing_group_ids)
 		->get()
 		->result();
 
-		$data['roles'] = $this->db->query('SELECT `role` FROM access_grant_group UNION SELECT `role` FROM access_grant')->result();
-
-		$data['groups'] = json_decode(json_encode($mod_groups));
+		$data['users'] = $users;
 
 		$this->load->view('template/v_header');
 		$this->load->view('master/v_akses_personal',$data);

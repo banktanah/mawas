@@ -14,7 +14,7 @@
 					<div class="box-header">
 						<h3 class="box-title">User Group</h3>
 						<div class="pull-right">
-							<button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addGroup"><i class="fa fa-plus"></i>  &nbsp Tambah</button>
+							<button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addGroup"><i class="fa fa-plus"></i> &nbsp Tambah</button>
 							<a href="<?php echo base_url('apps') ?>" type="button" class="btn btn-warning btn-sm"><i class="fa fa-arrow-left"></i> &nbsp Kembali</a>
 						</div>
 
@@ -44,7 +44,7 @@
 											<td><?php echo $p->description; ?></td>
 											<td>
 												<!-- <button title="Edit Data" type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#editData<?php //echo $p->apps_id ?>"><i class="fa fa-pencil"></i> </button> -->
-												<button title="Hapus" type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#hapusData<?php echo $p->user_group_id ?>" style="min-width: 70px;">
+												<button title="Hapus" type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#hapusData_<?php echo $p->user_group_id ?>" style="min-width: 70px;">
 													<i class="fa fa-trash"></i>&nbsp;Hapus
 												</button>	
 												<button title="Akses" type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modal_akses" onclick="addAccessData('<?php echo $p->user_group_id ?>')" style="min-width: 70px; margin-top: 5px;">
@@ -52,7 +52,7 @@
 												</button>
 												
 												<!-- Hapus data user -->
-												<div id="hapusData<?php echo $p->user_group_id ?>" class="modal fade" role="dialog">
+												<div id="hapusData_<?php echo $p->user_group_id ?>" class="modal fade" role="dialog">
 													<div class="modal-dialog">
 														<div class="modal-content">
 															<div class="modal-header">
@@ -60,15 +60,13 @@
 																	<span aria-hidden="true">&times;</span>
 																</button>
 																<h5 class="modal-title" id="exampleModalLabel">Peringatan!</h5>
-																
-
 															</div>
 															<div class="modal-body">
-																<p>Yakin ingin menghapus data ini ?</p>
+																<p>Yakin ingin user-group <?php echo "\"$p->name\"" ?> ?</p>
 															</div>
 															<div class="modal-footer">
 																<button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
-																<a href="<?php echo base_url().'akses/akses_hapus?akses_id='.$p->user_group_id.'&apps_id='.$p->user_group_id; ?>" class="btn btn-primary">Hapus</a>
+																<a href="<?php echo base_url().'akses/user_group_delete?user_group_id='.$p->user_group_id ?>" class="btn btn-primary">Hapus</a>
 															</div>
 														</div>
 													</div>
@@ -98,7 +96,7 @@
 					</div>
 					<div class="modal-body">
 
-						<form action="<?php echo base_url('akses/akses_act') ?>" method="post" enctype="multipart/form-data">											
+						<form action="<?php echo base_url('akses/user_group_add') ?>" method="post" enctype="multipart/form-data">											
 
 							<div class="form-group" style="width:100%">
 								<label style="width: 100%;"> Nama Group</label>	
@@ -119,12 +117,12 @@
 				let group_matrix = group_matrix_str? JSON.parse(group_matrix_str): [];
 
 				let group = group_matrix.find(a => a.user_group_id == usergroup_id);
-				// console.log(group);
+				console.log(group);
 				let datas = group? group.access: [];
-				// console.log(datas);
+				console.log(datas);
 
 				$('#modal_akses').find('#modal-title-group').html(group.name);
-				$('#modal_akses').find('[name="group_id"]').html(group.user_group_id);
+				$('#modal_akses').find('[name="user_group_id"]').val(group.user_group_id);
 
 				let no = 1;
 				let content = '';
@@ -152,10 +150,6 @@
 				$('#role-form').toggle('slow');
 				$('#custom-role-form').toggle('slow');
 			}
-
-			function deleteRole(apps_id, role){
-
-			}
 		</script>
 		<div id="modal_akses" class="modal fade" role="dialog">
 			<div class="modal-dialog">
@@ -180,10 +174,9 @@
 						</table>
 
 						<form action="<?php echo base_url('akses/group_add') ?>" method="post" enctype="multipart/form-data">											
-
 							<div class="form-group" style="width:100%">
 								<label style="width: 100%;"> Aplikasi</label>	
-								<input type="hidden" name="user_group_id" value="">
+								<input type="hidden" name="user_group_id" value=""/>
 								<select class="form-control" name="apps_id" required style="width: 100%;">
 									<option value="">--Pilih Aplikasi--</option>
 									<?php 
@@ -209,7 +202,7 @@
 								</select>
 							</div>
 							<div class="form-group" style="width:100%">
-								<label style="width: 100%;"> Custom Role <input type="checkbox" onchange="toggleCustomRole()"/></label>
+								<label style="width: 100%;"> Custom Role <input type="checkbox" name="is_custom_role" onchange="toggleCustomRole()"/></label>
 							</div>
 							<div id="custom-role-form" class="form-group" style="width:100%; display:none;">
 								<label style="width: 100%;"> Custom Role Name</label>
