@@ -14,7 +14,7 @@
 					<div class="box-header">
 						<h3 class="box-title">User Group</h3>
 						<div class="pull-right">
-							<button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addKategori"><i class="fa fa-plus"></i>  &nbsp Tambah</button>
+							<button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addGroup"><i class="fa fa-plus"></i>  &nbsp Tambah</button>
 							<a href="<?php echo base_url('apps') ?>" type="button" class="btn btn-warning btn-sm"><i class="fa fa-arrow-left"></i> &nbsp Kembali</a>
 						</div>
 
@@ -44,8 +44,12 @@
 											<td><?php echo $p->description; ?></td>
 											<td>
 												<!-- <button title="Edit Data" type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#editData<?php //echo $p->apps_id ?>"><i class="fa fa-pencil"></i> </button> -->
-												<button title="Hapus" type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#hapusData<?php echo $p->user_group_id ?>"><i class="fa fa-trash"></i>Hapus</button>	
-												<button title="Akses" type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modal_akses" onclick="addAccessData('<?php echo $p->user_group_id ?>')"><i class="fa fa-people"></i>Akses</button>
+												<button title="Hapus" type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#hapusData<?php echo $p->user_group_id ?>" style="min-width: 70px;">
+													<i class="fa fa-trash"></i>&nbsp;Hapus
+												</button>	
+												<button title="Akses" type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modal_akses" onclick="addAccessData('<?php echo $p->user_group_id ?>')" style="min-width: 70px; margin-top: 5px;">
+													<i class="fa fa-people"></i>&nbsp;Akses
+												</button>
 												
 												<!-- Hapus data user -->
 												<div id="hapusData<?php echo $p->user_group_id ?>" class="modal fade" role="dialog">
@@ -85,45 +89,20 @@
 		</div>
 
 		<!-- Modals -->
-		<div id="addKategori" class="modal fade" role="dialog">
+		<div id="addGroup" class="modal fade" role="dialog">
 			<div class="modal-dialog">
 				<div class="modal-content">
 					<div class="modal-header">
 						<button type="button" class="close" data-dismiss="modal">&times;</button>
-						<center><h4 class="modal-title"> Tambah Akses <?= $nama_apps; ?></h4></center>
+						<center><h4 class="modal-title"> Tambah Group</h4></center>
 					</div>
 					<div class="modal-body">
 
 						<form action="<?php echo base_url('akses/akses_act') ?>" method="post" enctype="multipart/form-data">											
 
 							<div class="form-group" style="width:100%">
-								<label style="width: 100%;"> Nama User</label>	
-								<input type="hidden" name="apps_id" value="<?= $apps_id; ?>">
-								<select id="namaUser" class="form-control" name="user_id" required style="width: 100%;">
-									<option value="">--Pilih Akun User--</option>
-									<?php 
-										$peg = $this->db->query("select * from user")->result();
-										foreach ($peg as $pg) {
-									?>
-									<option value="<?= $pg->user_id ?>"><?= $pg->user_nama.' | '.$pg->user_username ?></option>
-									<?php
-										}
-									?>													
-								</select>
-							</div>
-							<div class="form-group" style="width:100%">
-								<label style="width: 100%;"> Role User</label>	
-								<select class="form-control" name="role_nama" required style="width: 100%;">
-									<option value="">--Pilih Role User--</option>
-									<?php 
-										$role = $this->db->query("select * from user_role")->result();
-										foreach ($role as $r) {
-									?>
-									<option value="<?= $r->role_nama ?>"><?= $r->role_nama ?></option>
-									<?php
-										}
-									?>													
-								</select>
+								<label style="width: 100%;"> Nama Group</label>	
+								<input type="text" name="group_name" value="" style="width: 100%;">
 							</div>
 						
 							<br>
@@ -159,7 +138,7 @@
 								<form action="<?php echo base_url('akses/group_delete') ?>" method="post">
 									<input type="hidden" name="apps_id" value="${a.apps_id}" />
 									<input type="hidden" name="role" value="${a.role}" />
-									<button type="submit" class="btn btn-danger btn-sm"><i class="fa fa-trash"></i>Hapus</button>	
+									<button type="submit" class="btn btn-danger btn-sm"><i class="fa fa-trash"></i>&nbsp;Hapus</button>	
 								</form>
 							</td>
 						</tr>
