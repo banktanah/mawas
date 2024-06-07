@@ -159,9 +159,20 @@ class Akses extends CI_Controller {
 	public function user_group_delete(){
 		$get = $this->input->get(null, true);
 
-		$status = $this->db->delete('user_group', [
+		$success = $this->db->delete('access_grant_group', [
 			'user_group_id' => $get['user_group_id']
 		]);
+
+		if($success){
+			$success = $this->db->delete('mx_user_usergroup', [
+				'user_group_id' => $get['user_group_id']
+			]);
+			if($success){
+				$success = $this->db->delete('user_group', [
+					'user_group_id' => $get['user_group_id']
+				]);
+			}
+		}
 
 		$this->session->set_flashdata('success', "Hapus user-group \"".$get['user_group_id']."\" berhasil");
 		redirect('akses/group');
@@ -249,8 +260,9 @@ class Akses extends CI_Controller {
 	public function personal()
 	{
 		$user_raws = $this->db
-		->select('user_id, user_nama, user_username, nip')
+		->select('user_id, upper(user_nama) as user_nama, nip')
 		->from('user')
+		->order_by('upper(user_nama)')
 		->get()
 		->result_array();
 
@@ -272,16 +284,33 @@ class Akses extends CI_Controller {
 			;
 
 			$row_user['access'] = $access;
-			$users []= $row_user;
+
+			$access_group = $this->db
+			->select('
+				app.apps_nama,
+				ug.name as group_name,
+				agg.role
+			')
+			->from('mx_user_usergroup mug')
+			->join('access_grant_group agg', 'mug.user_group_id = agg.user_group_id')
+			->join('user_group ug', 'agg.user_group_id = ug.user_group_id')
+			->join('apps app', 'agg.apps_id = app.apps_id')
+			->where('mug.user_id', $row_user['user_id'])
+			->get()
+			->result();
+			;
+			
+			$row_user['group_access'] = $access_group;
+
+			$users []= json_decode(json_encode($row_user));
 		}
+		$data['users'] = $users;
 
 		$data['apps'] = $this->db
 		->select('apps_id, apps_nama')
 		->from('apps')
 		->get()
 		->result();
-
-		$data['users'] = $users;
 
 		$this->load->view('template/v_header');
 		$this->load->view('master/v_akses_personal',$data);

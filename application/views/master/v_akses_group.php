@@ -14,7 +14,7 @@
 					<div class="box-header">
 						<h3 class="box-title">User Group</h3>
 						<div class="pull-right">
-							<button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addGroup"><i class="fa fa-plus"></i> &nbsp Tambah</button>
+							<button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modal_add_group"><i class="fa fa-plus"></i> &nbsp Tambah</button>
 							<a href="<?php echo base_url('apps') ?>" type="button" class="btn btn-warning btn-sm"><i class="fa fa-arrow-left"></i> &nbsp Kembali</a>
 						</div>
 
@@ -24,13 +24,13 @@
 					</div>
 
 					<div class="box-body">
-						<table class="table table-bordered" id="table-datatable">
+						<table class="table table-bordered datatable-init">
 							<thead>
 								<tr>
 									<th width="1%">NO</th>
-									<th>Group Name</th>
-									<th>Description</th>
-									<th width="5%">OPSI</th>
+									<th width="40%">Group Name</th>
+									<!-- <th>Description</th> -->
+									<th>OPSI</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -41,23 +41,22 @@
 										<tr>
 											<td><?php echo $no++; ?></td>
 											<td><?php echo $p->name ?></td>
-											<td><?php echo $p->description; ?></td>
+											<!-- <td><?php //echo $p->description; ?></td> -->
 											<td>
-												<button title="Hapus" type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#hapusData_<?php echo $p->user_group_id ?>" style="min-width: 70px;">
-													<i class="fa fa-trash"></i>&nbsp;Hapus
-												</button>
-												<!-- <button title="Hapus" type="button" class="btn btn-danger btn-sm" onclick="modal_confirm('Hapus <?php echo $p->name ?>?')" style="min-width: 70px;">
-													<i class="fa fa-trash"></i>&nbsp;Hapus
-												</button> -->
-												<button title="Akses" type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modal_akses" onclick="modalAccessData('<?php echo $p->user_group_id ?>')" style="min-width: 70px; margin-top: 5px;">
+												<button title="Akses" type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modal_akses" onclick="modalAccess('<?php echo $p->user_group_id ?>')" style="min-width: 70px; margin-bottom: 5px;">
 													<i class="fa fa-people"></i>&nbsp;Akses
 												</button>
-												<button title="User" type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#modal_user" onclick="modalUserData('<?php echo $p->user_group_id ?>')" style="min-width: 70px; margin-top: 5px;">
+												<button title="User" type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#modal_user" onclick="modalUser('<?php echo $p->user_group_id ?>')" style="min-width: 70px; margin-bottom: 5px;">
 													<i class="fa fa-people"></i>&nbsp;User
 												</button>
+												<button title="Hapus" type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#modal_delete_group" onclick="modalDeleteGroup('<?php echo $p->user_group_id ?>')" style="min-width: 70px; margin-bottom: 5px;">
+													<i class="fa fa-trash"></i>&nbsp;Hapus
+												</button>
+												<!-- <button title="Hapus" type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#hapusData_<?php echo $p->user_group_id ?>" style="min-width: 70px; margin-bottom: 5px;">
+													<i class="fa fa-trash"></i>&nbsp;Hapus
+												</button> -->
 												
-												<!-- Hapus data user -->
-												<div id="hapusData_<?php echo $p->user_group_id ?>" class="modal fade" role="dialog">
+												<!-- <div id="hapusData_<?php echo $p->user_group_id ?>" class="modal fade" role="dialog">
 													<div class="modal-dialog">
 														<div class="modal-content">
 															<div class="modal-header">
@@ -75,7 +74,7 @@
 															</div>
 														</div>
 													</div>
-												</div>
+												</div> -->
 											</td>
 										</tr>
 								<?php 
@@ -92,7 +91,7 @@
 		</div>
 
 		<!-- Modals -->
-		<div id="addGroup" class="modal fade" role="dialog">
+		<div id="modal_add_group" class="modal fade" role="dialog">
 			<div class="modal-dialog">
 				<div class="modal-content">
 					<div class="modal-header">
@@ -109,9 +108,42 @@
 							</div>
 						
 							<br>
-							<input type="submit" value="Simpan" class="btn btn-primary">
+							<input type="submit" value="Tambah Group" class="btn btn-primary">
 						</form>
 					</div>											
+				</div>
+			</div>
+		</div>
+
+		<div id="modal_delete_group" class="modal fade" role="dialog">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+						</button>
+						<h5 class="modal-title">modal-title</h5>
+					</div>
+					<div class="modal-body">
+						<p>modal-body</p>
+					</div>
+					<div class="modal-footer">
+						<table>
+							<tr>
+								<td style="padding-right: 2vw">
+									<form action="<?php echo base_url('akses/user_group_delete') ?>" method="get" enctype="multipart/form-data">											
+										<input type="hidden" name="user_group_id" value="">
+										<input type="submit" value="Hapus" class="btn btn-danger">
+									</form>
+								</td>
+								<td>
+									<button	button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+								</td>
+							</tr>
+						</table>
+						
+						<!-- <a href="<?php echo base_url().'akses/user_group_delete?user_group_id='.$p->user_group_id ?>" class="btn btn-primary">Hapus</a> -->
+					</div>
 				</div>
 			</div>
 		</div>
@@ -125,7 +157,7 @@
 					</div>
 					<div class="modal-body">
 						
-						<table class="table table-bordered" id="table-datatable">
+						<table class="table table-bordered datatable-init">
 							<thead>
 								<tr>
 									<th>No</th>
@@ -134,7 +166,7 @@
 									<th>Action</th>
 								</tr>
 							</thead>
-							<tbody id="tbody_access">
+							<tbody class="table-body">
 							</tbody>
 						</table>
 
@@ -175,7 +207,7 @@
 							</div>
 						
 							<br>
-							<input type="submit" value="Simpan" class="btn btn-primary">
+							<input type="submit" value="Tambah Akses" class="btn btn-primary">
 						</form>
 					</div>											
 				</div>
@@ -191,7 +223,7 @@
 					</div>
 					<div class="modal-body">
 						
-						<table class="table table-bordered" id="table-datatable">
+						<table class="table table-bordered datatable-init">
 							<thead>
 								<tr>
 									<th>No</th>
@@ -229,7 +261,20 @@
 		</div>
 		
 		<script>
-			function modalAccessData(usergroup_id){
+			function modalDeleteGroup(usergroup_id){
+				let group_matrix_str = '<?php echo json_encode($groups)?>';
+				let group_matrix = group_matrix_str? JSON.parse(group_matrix_str): [];
+
+				let group = group_matrix.find(a => a.user_group_id == usergroup_id);
+				console.log(group);
+
+				$('#modal_delete_group').find('.modal-title').html(`Hapus Group`);
+				$('#modal_delete_group').find('.modal-body').children().first().html(`Hapus Group ${group.name}`);
+				
+				$('#modal_delete_group').find('[name="user_group_id"]').val(group.user_group_id);
+			}
+
+			function modalAccess(usergroup_id){
 				let group_matrix_str = '<?php echo json_encode($groups)?>';
 				let group_matrix = group_matrix_str? JSON.parse(group_matrix_str): [];
 
@@ -262,10 +307,10 @@
 					`;
 				});
 
-				$(`#tbody_access`).html(content);
+				$(`.table-body`).html(content);
 			}
 
-			function modalUserData(usergroup_id){
+			function modalUser(usergroup_id){
 				let users_str = '<?php echo json_encode($users)?>';
 				let users = users_str? JSON.parse(users_str): [];
 
