@@ -114,6 +114,18 @@ class Akses extends CI_Controller {
 		->get()
 		->result();
 
+		$data['users'] = $this->db
+		->select('user_id, user_nama, nip')
+		->from('user')
+		->get()
+		->result();
+
+		$data['matrix_user_group'] = $this->db
+		->select('user_id, user_group_id')
+		->from('mx_user_usergroup')
+		->get()
+		->result();
+
 		$data['roles'] = $this->db->query('SELECT `role` FROM access_grant_group UNION SELECT `role` FROM access_grant')->result();
 
 		$data['groups'] = json_decode(json_encode($mod_groups));
@@ -193,6 +205,44 @@ class Akses extends CI_Controller {
 		]);
 
 		$this->session->set_flashdata('success', "Hapus role \"".$post['role']."\" berhasil");
+		redirect('akses/group');
+	}
+ 
+	public function group_add_user(){
+		$post = $this->input->post(null, true);
+
+		$existing = $this->db
+		->select('*')
+		->from('mx_user_usergroup')
+		->where('user_group_id', $post['user_group_id'])
+		->where('user_id', $post['user_id'])
+		->get()
+		->num_rows();
+		;
+		if($existing != 0){
+			$this->session->set_flashdata('error', 'The user already exists in group');
+			redirect('akses/group');
+			exit;
+		}
+
+		$status = $this->db->insert('mx_user_usergroup', [
+			'user_group_id' => $post['user_group_id'],
+			'user_id' => $post['user_id']
+		]);
+
+		$this->session->set_flashdata('success', "Add User kedalam Group berhasil");
+		redirect('akses/group');
+	}
+
+	public function group_delete_user(){
+		$post = $this->input->post(null, true);
+
+		$status = $this->db->delete('mx_user_usergroup', [
+			'user_group_id' => $post['user_group_id'],
+			'user_id' => $post['user_id']
+		]);
+
+		$this->session->set_flashdata('success', "Remove User dari Group berhasil");
 		redirect('akses/group');
 	}
 	
