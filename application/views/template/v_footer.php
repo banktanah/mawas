@@ -6,10 +6,9 @@
 	</footer>
 </div>
 
-<script src="<?php echo base_url(); ?>assets/bower_components/jquery/dist/jquery.min.js"></script>
-<script src="<?php echo base_url(); ?>assets/bower_components/jquery-ui/jquery-ui.min.js"></script>
+<!-- <script src="<?php echo base_url(); ?>assets/bower_components/jquery-ui/jquery-ui.min.js"></script> -->
 <script>
-	$.widget.bridge('uibutton', $.ui.button);
+	// $.widget.bridge('uibutton', $.ui.button);
 </script>
 <script src="<?php echo base_url(); ?>assets/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
 <script src="<?php echo base_url(); ?>assets/bower_components/raphael/raphael.min.js"></script>
@@ -30,12 +29,14 @@
 <script src="<?php echo base_url(); ?>assets/bower_components/datatables.net-bs/js/dataTables.bootstrap.js"></script>
 
 <script src="<?php echo base_url(); ?>assets/dist/js/adminlte.min.js"></script>
-<script src="<?php echo base_url(); ?>assets/dist/js/pages/dashboard.js"></script>
+<!-- <script src="<?php echo base_url(); ?>assets/dist/js/pages/dashboard.js"></script> -->
 <script src="<?php echo base_url(); ?>assets/dist/js/demo.js"></script>
 <script src="<?php echo base_url() ?>assets/bower_components/ckeditor/ckeditor.js"></script>
 
 <!-- js untuk select2  -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<!-- <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script> -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.8/css/select2.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.8/js/select2.min.js"></script>
 
 <script>
 	$("#namaPegawai").select2();
@@ -46,32 +47,32 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-	var chart = new OrgChart(document.getElementById("tree"), {
-			template: "mila",
-			enableSearch: false,
-			align: OrgChart.align.orientation,
-			scaleInitial:OrgChart.match.boundary,
-			nodeBinding: {
-                field_0: "Jabatan",
-				field_1: "Nama",
-				img_0: "img"
-            },
+	// var chart = new OrgChart(document.getElementById("tree"), {
+	// 		template: "mila",
+	// 		enableSearch: false,
+	// 		align: OrgChart.align.orientation,
+	// 		scaleInitial:OrgChart.match.boundary,
+	// 		nodeBinding: {
+    //             field_0: "Jabatan",
+	// 			field_1: "Nama",
+	// 			img_0: "img"
+    //         },
 			
-            nodes: [
-				<?php
-					$jbt = $this->db->query("select * from jabatan")->result();
-					foreach ($jbt as $j) {
-						if ($j->jabatan_level == 1) {
-							//$name = $this->db->query("select * from pegawai where pegawai_jabatan = '$j->jabatan_id'")->row();
-							echo '{ id:'.$j->jabatan_id.', Jabatan:"'.$j->jabatan_nama.'", Nama: "'.$j->pegawai_nama.'", img: "https://cdn.balkan.app/shared/empty-img-none.svg" },';
-						}elseif ($j->jabatan_level > 1) {
-							echo '{ id:'.$j->jabatan_id.', pid:'.$j->jabatan_under.', Jabatan:"'.$j->jabatan_nama.'", Nama: "'.$j->pegawai_nama.'", img: "https://cdn.balkan.app/shared/empty-img-none.svg" },';
-						}
-					}
-				?>
+    //         nodes: [
+	// 			<?php
+	// 				$jbt = $this->db->query("select * from jabatan")->result();
+	// 				foreach ($jbt as $j) {
+	// 					if ($j->jabatan_level == 1) {
+	// 						//$name = $this->db->query("select * from pegawai where pegawai_jabatan = '$j->jabatan_id'")->row();
+	// 						echo '{ id:'.$j->jabatan_id.', Jabatan:"'.$j->jabatan_nama.'", Nama: "'.$j->pegawai_nama.'", img: "https://cdn.balkan.app/shared/empty-img-none.svg" },';
+	// 					}elseif ($j->jabatan_level > 1) {
+	// 						echo '{ id:'.$j->jabatan_id.', pid:'.$j->jabatan_under.', Jabatan:"'.$j->jabatan_nama.'", Nama: "'.$j->pegawai_nama.'", img: "https://cdn.balkan.app/shared/empty-img-none.svg" },';
+	// 					}
+	// 				}
+	// 			?>
                 
-            ]
-        });
+    //         ]
+    //     });
 
 		$(".img").hide();
 
@@ -331,7 +332,7 @@
 
 <script>
 	$(function () {
-		CKEDITOR.replace('editor')
+		// CKEDITOR.replace('editor')
 	});
 
 	$(document).ready( function () {
@@ -343,6 +344,11 @@
 		var table = $('#table-pegawai').DataTable({
 			"scrollX": true,
 			"sDom": "lrtip"
+		});
+
+		$('.datatable-init').css("width", "100%");
+		$('.datatable-init').DataTable({
+			"scrollX": true
 		});
 
 		$('.filter-pegawai').on('click', function(e){

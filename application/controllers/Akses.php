@@ -78,5 +78,243 @@ class Akses extends CI_Controller {
 		$this->session->set_flashdata('success', 'Berhasil menghapus akses.');	
 		redirect(base_url().'akses/akses/'.$apps_id);
 	}
+	
+	public function group()
+	{
+		$groups = $this->db
+		->select('*')
+		->from('user_group')
+		->get()
+		->result_array();
+
+		$mod_groups = [];
+		foreach($groups as $group){
+			$access = $this->db
+			->select('a.apps_id, a.apps_nama, agg.role')
+			->from('access_grant_group agg')
+			->join('apps as a', 'agg.apps_id = a.apps_id')
+			->where('agg.user_group_id', $group['user_group_id'])
+			->get()
+			->result_array();
+			;
+
+			$group['access'] = $access;
+			$mod_groups []= json_decode(json_encode($group));
+		}
+
+		// $existing_group_ids = [];
+		// foreach($mod_groups as $group){
+		// 	$existing_group_ids []= $group->apps_id;
+		// }
+
+		$data['apps'] = $this->db
+		->select('apps_id, apps_nama')
+		->from('apps')
+		// ->where_not_in('apps_id', $existing_group_ids)
+		->get()
+		->result();
+
+		$data['users'] = $this->db
+		->select('user_id, user_nama, nip')
+		->from('user')
+		->get()
+		->result();
+
+		$data['matrix_user_group'] = $this->db
+		->select('user_id, user_group_id')
+		->from('mx_user_usergroup')
+		->get()
+		->result();
+
+		$data['roles'] = $this->db->query('SELECT `role` FROM access_grant_group UNION SELECT `role` FROM access_grant')->result();
+
+		$data['groups'] = json_decode(json_encode($mod_groups));
+		$this->load->view('template/v_header');
+		$this->load->view('master/v_akses_group',$data);
+		$this->load->view('template/v_footer');
+	}
+
+	public function user_group_add(){
+		$post = $this->input->post(null, true);
+
+		$existing = $this->db
+		->select('*')
+		->from('user_group')
+		->where('name', $post['group_name'])
+		->get()
+		->num_rows();
+		;
+		if($existing != 0){
+			$this->session->set_flashdata('error', 'The specified role already exists');
+			redirect('akses/group');
+			exit;
+		}
+
+		$status = $this->db->insert('user_group', ['name' => $post['group_name']]);
+
+		$this->session->set_flashdata('success', "Add user-group \"".$post['group_name']."\" berhasil");
+		redirect('akses/group');
+	}
+
+	public function user_group_delete(){
+		$get = $this->input->get(null, true);
+
+		$success = $this->db->delete('access_grant_group', [
+			'user_group_id' => $get['user_group_id']
+		]);
+
+		if($success){
+			$success = $this->db->delete('mx_user_usergroup', [
+				'user_group_id' => $get['user_group_id']
+			]);
+			if($success){
+				$success = $this->db->delete('user_group', [
+					'user_group_id' => $get['user_group_id']
+				]);
+			}
+		}
+
+		$this->session->set_flashdata('success', "Hapus user-group \"".$get['user_group_id']."\" berhasil");
+		redirect('akses/group');
+	}
+ 
+	public function group_add(){
+		$post = $this->input->post(null, true);
+
+		$role = isset($post['is_custom_role'])? $post['role_custom']: $post['role'];
+		$existing = $this->db
+		->select('*')
+		->from('access_grant_group')
+		->where('user_group_id', $post['user_group_id'])
+		->where('apps_id', $post['apps_id'])
+		->where('role', $role)
+		->get()
+		->num_rows();
+		;
+		if($existing != 0){
+			$this->session->set_flashdata('error', 'The specified role already exists');
+			redirect('akses/group');
+			exit;
+		}
+
+		$status = $this->db->insert('access_grant_group', [
+			'user_group_id' => $post['user_group_id'],
+			'apps_id' => $post['apps_id'],
+			'role' => $role
+		]);
+
+		$this->session->set_flashdata('success', "Add role \"".$role."\" berhasil");
+		redirect('akses/group');
+	}
+
+	public function group_delete(){
+		$post = $this->input->post(null, true);
+
+		$status = $this->db->delete('access_grant_group', [
+			'apps_id' => $post['apps_id'],
+			'role' => $post['role']
+		]);
+
+		$this->session->set_flashdata('success', "Hapus role \"".$post['role']."\" berhasil");
+		redirect('akses/group');
+	}
+ 
+	public function group_add_user(){
+		$post = $this->input->post(null, true);
+
+		$existing = $this->db
+		->select('*')
+		->from('mx_user_usergroup')
+		->where('user_group_id', $post['user_group_id'])
+		->where('user_id', $post['user_id'])
+		->get()
+		->num_rows();
+		;
+		if($existing != 0){
+			$this->session->set_flashdata('error', 'The user already exists in group');
+			redirect('akses/group');
+			exit;
+		}
+
+		$status = $this->db->insert('mx_user_usergroup', [
+			'user_group_id' => $post['user_group_id'],
+			'user_id' => $post['user_id']
+		]);
+
+		$this->session->set_flashdata('success', "Add User kedalam Group berhasil");
+		redirect('akses/group');
+	}
+
+	public function group_delete_user(){
+		$post = $this->input->post(null, true);
+
+		$status = $this->db->delete('mx_user_usergroup', [
+			'user_group_id' => $post['user_group_id'],
+			'user_id' => $post['user_id']
+		]);
+
+		$this->session->set_flashdata('success', "Remove User dari Group berhasil");
+		redirect('akses/group');
+	}
+	
+	public function personal()
+	{
+		$user_raws = $this->db
+		->select('user_id, upper(user_nama) as user_nama, nip')
+		->from('user')
+		->order_by('upper(user_nama)')
+		->get()
+		->result_array();
+
+		$users = [];
+		foreach($user_raws as $row_user){
+			$access = $this->db
+			->select('
+				ag.user_id, 
+				ag.apps_id, 
+				app.apps_nama, 
+				ag.role,
+				ag.grant_type
+			')
+			->from('access_grant ag')
+			->join('apps app', 'ag.apps_id = app.apps_id')
+			->where('ag.user_id', $row_user['user_id'])
+			->get()
+			->result_array();
+			;
+
+			$row_user['access'] = $access;
+
+			$access_group = $this->db
+			->select('
+				app.apps_nama,
+				ug.name as group_name,
+				agg.role
+			')
+			->from('mx_user_usergroup mug')
+			->join('access_grant_group agg', 'mug.user_group_id = agg.user_group_id')
+			->join('user_group ug', 'agg.user_group_id = ug.user_group_id')
+			->join('apps app', 'agg.apps_id = app.apps_id')
+			->where('mug.user_id', $row_user['user_id'])
+			->get()
+			->result();
+			;
+			
+			$row_user['group_access'] = $access_group;
+
+			$users []= json_decode(json_encode($row_user));
+		}
+		$data['users'] = $users;
+
+		$data['apps'] = $this->db
+		->select('apps_id, apps_nama')
+		->from('apps')
+		->get()
+		->result();
+
+		$this->load->view('template/v_header');
+		$this->load->view('master/v_akses_personal',$data);
+		$this->load->view('template/v_footer');
+	}
 }
 ?>

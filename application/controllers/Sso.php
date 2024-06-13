@@ -571,27 +571,24 @@ class Sso extends CI_Controller {
 			if($grant_type == 'refresh'){
 				$response['data'] = $this->generate_access_token_for_user($payload->nip, $payload->msi);
 			}
-		}else if($payload->aud != '*'){
-			$client_id = $payload->aud; //aud value should be "*" or a client_id
-			$apps = $this->app_model->get_by_client_id($client_id);
-
-			if(empty($apps)){
-				http_response_code(401);
-				echo 'Invalid Audience';
-				exit;
+		}else{
+			if($payload->aud != '*'){ //aud value should be "*" or a client_id
+				$apps = $this->app_model->get_by_client_id($payload->aud);
+	
+				if(empty($apps)){
+					http_response_code(401);
+					echo 'Invalid Audience';
+					exit;
+				}
 			}
-
+	
 			if($grant_type == 'refresh'){
-				$tokens = $this->generate_access_token_for_app($client_id);
+				$tokens = $this->generate_access_token_for_app($payload->aud);
 				$response['data'] = [
 					'access_token' => $tokens->access_token,
 					'refresh_token' => $tokens->refresh_token
 				];
 			}
-		}else{
-			http_response_code(401);
-			echo 'Unknown token type';
-			exit;
 		}
 
 		echo json_encode($response);
