@@ -3,12 +3,19 @@
 class User_model extends CI_Model{
 	
 	function do_login($username, $password){
+		$pegawai_id = -1;
+		$peg_id = $this->get_pegawai_id_by_nip($username);
+		if(!empty($peg_id)){
+			$pegawai_id = intval($peg_id);
+		}
+
 		return $this->db
 			->select('*')
 			->from('user')
 			->group_start()
 				->where('user_username', $username)
-				->or_where('nip', $username)
+				// ->or_where('nip', $username)
+				->or_where('pegawai_id', $pegawai_id)
 			->group_end()
 			->group_start()
 				->where('user_password', md5($password))
@@ -119,12 +126,19 @@ class User_model extends CI_Model{
 	}
 
 	public function get_by_email_or_nip($email_or_nip){
+		$pegawai_id = -1;
+		$peg_id = $this->get_pegawai_id_by_nip($email_or_nip);
+		if(!empty($peg_id)){
+			$pegawai_id = intval($peg_id);
+		}
+
 		return $this->db
 			->select('*')
 			->from('user')
 			->group_start()
 				->where('user_username', $email_or_nip)
-				->or_where('nip', $email_or_nip)
+				// ->or_where('nip', $email_or_nip)
+				->or_where('pegawai_id', $pegawai_id)
 			->group_end()
 			->get()
 			->row();
@@ -139,6 +153,18 @@ class User_model extends CI_Model{
 			->row();
 	}
 	
+	public function get_pegawai_id_by_nip($nip){
+		$peg = $this->db->query("
+			select pegawai_id
+			from pegawai_karir
+			where pegawai_nip = '$nip'
+		")
+		->row();
+
+		if(empty($peg))return null;
+
+		return $peg->pegawai_id;
+	}
 }
 
 ?>

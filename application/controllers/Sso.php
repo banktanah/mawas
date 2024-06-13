@@ -106,11 +106,11 @@ class Sso extends CI_Controller {
 			$loginpage_params []= "redirect=".urlencode($postdatas["redirect"]);
 		}
 
-		/**
-		 * Recaptcha tutorial: 
-		 * https://wesleybaxterhuber.medium.com/i-finally-figured-out-googles-recaptcha-v3-8f668860f82d
-		 */
-		if(empty($postdatas['a'])){
+		if(empty($postdatas['a'])){ //we can skips recaptcha by giving url-param "a"
+			/**
+			 * Recaptcha tutorial: 
+			 * https://wesleybaxterhuber.medium.com/i-finally-figured-out-googles-recaptcha-v3-8f668860f82d
+			 */
 			if(empty($postdatas['g-recaptcha-response'])){
 				$this->session->set_flashdata('error', "No recaptcha-response !");
 				redirect($redirect_back.'?'.implode('&', $loginpage_params));
