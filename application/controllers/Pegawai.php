@@ -73,10 +73,7 @@ class Pegawai extends CI_Controller {
 
 		//GET PEROLEHAN VIA API
 		//URL
-		//localhost
-		//$api_url = 'http://localhost/instapro/services/get_perolehans';
-		//prod server
-		$api_url = 'http://10.254.42.26/instapro/services/get_perolehans';
+		$api_url = $_ENV['API_INSTAPRO'];
 		// Read JSON file
 		$json_data = file_get_contents($api_url);
 		// Decode JSON data into PHP array

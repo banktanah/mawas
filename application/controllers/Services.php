@@ -43,6 +43,7 @@ class Services extends CI_Controller {
             $kariers = $this->db->select('*')
 					->from('pegawai_karir as t1')
 					->where('t1.pegawai_id', $pegawai_id)
+					->where('t1.is_active', TRUE)
 					->join('master_pegawai_status as t3', 't1.status_pegawai_id = t3.status_pegawai_id', 'LEFT')
 					->join('deputi as t4', 't1.deputi_id = t4.deputi_id', 'LEFT')
 					->join('divisi as t5', 't1.divisi_id = t5.divisi_id', 'LEFT')
@@ -65,7 +66,7 @@ class Services extends CI_Controller {
                         //'app_id' => '',
                         'pegawai_id' => $data->pegawai_id,
                         // 'pegawai_level' => array(),
-                        // 'pegawai_divisi' => array(),
+                        //'pegawai_divisi' => array(),
                         // 'pegawai_divisi_bagian' => array(),
                         'karier' => $kariers,
                         'foto_path' => $data->foto_path,
@@ -119,7 +120,7 @@ class Services extends CI_Controller {
                                 //'app_id' => $akses->apps_id,
                                 'pegawai_id' => $data->pegawai_id,
                                 // 'pegawai_level' => array(),
-                                // 'pegawai_divisi' => array(),
+                                //'pegawai_divisi' => array(),
                                 // 'pegawai_divisi_bagian' => array(),
                                 'karier' => $kariers,
                                 'foto_path' => $data->foto_path,
