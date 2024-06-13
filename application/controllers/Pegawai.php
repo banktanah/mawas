@@ -74,12 +74,12 @@ class Pegawai extends CI_Controller {
 		//GET PEROLEHAN VIA API
 		//URL
 		$api_url = $_ENV['API_INSTAPRO'];
-		// Read JSON file
-		// $json_data = file_get_contents($api_url);
-		// Decode JSON data into PHP array
-		// $perolehans = json_decode($json_data);
+		//Read JSON file
+		$json_data = file_get_contents($api_url);
+		//Decode JSON data into PHP array
+		$perolehans = json_decode($json_data);
 
-		// $data['perolehans'] = $perolehans;
+		$data['perolehans'] = $perolehans;
 
 		$this->load->view('template/v_header');
 		$this->load->view('pegawai/v_pegawai',$data);
