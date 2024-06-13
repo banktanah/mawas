@@ -308,6 +308,10 @@
 				});
 
 				$(`.table-body`).html(content);
+				
+				setTimeout(()=>{
+					$('.datatable-init').DataTable().columns.adjust();
+				}, 200);
 			}
 
 			function modalUser(usergroup_id){
@@ -370,8 +374,8 @@
 					content += `
 						<tr>
 							<td>${no++}</td>
-							<td>${a.user_nama}</td>
 							<td>${a.nip}</td>
+							<td>${a.user_nama}</td>
 							<td>
 								<form action="<?php echo base_url('akses/group_delete_user') ?>" method="post" onsubmit="return confirm('${confirmDeleteMsg}');">
 									<input type="hidden" name="user_group_id" value="${group.user_group_id}" />
@@ -384,6 +388,10 @@
 				});
 
 				$('#modal_user').find(`#tbody_access`).html(content);
+				
+				setTimeout(()=>{
+					$('.datatable-init').DataTable().columns.adjust();
+				}, 200);
 			}
 
 			function toggleCustomRole(){
