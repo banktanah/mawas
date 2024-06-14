@@ -596,7 +596,50 @@ class Sso extends CI_Controller {
 	}
 	
 	public function logout(){
-		$payload = $this->verify_bearer_header();
+		$payload = null;
+		$exception = null;
+
+		try {
+			$bearer = self::get_header_auth_token('Bearer');
+			$payload = JWT::decode($bearer, new Key($this->server_secret, 'HS256'));
+		} catch (InvalidArgumentException $e) {
+			// provided key/key-array is empty or malformed.
+			http_response_code(500);
+			$exception = $e;
+		} catch (DomainException $e) {
+			// provided algorithm is unsupported OR
+			// provided key is invalid OR
+			// unknown error thrown in openSSL or libsodium OR
+			// libsodium is required but not available.
+			http_response_code(500);
+			$exception = $e;
+		} catch (SignatureInvalidException $e) {
+			// provided JWT signature verification failed.
+			log_message('error', $e->getMessage());
+			http_response_code(401);
+			$exception = $e;
+		} catch (BeforeValidException $e) {
+			// provided JWT is trying to be used before "nbf" claim OR
+			// provided JWT is trying to be used before "iat" claim.
+			log_message('error', $e->getMessage().' => '.$e->getPayload());
+			http_response_code(401);
+			$exception = $e;
+		} catch (ExpiredException $e) {
+			// provided JWT is trying to be used after "exp" claim.
+			$payload = $e->getPayload();
+		} catch (UnexpectedValueException $e) {
+			// provided JWT is malformed OR
+			// provided JWT is missing an algorithm / using an unsupported algorithm OR
+			// provided JWT algorithm does not match provided key OR
+			// provided key ID in key/key-array is empty or invalid.
+			http_response_code(500);
+			$exception = $e;
+		}
+
+		if(!empty($exception)){
+			echo $exception->getMessage();
+			exit;
+		}
 
 		$status = $this->sharedsession_model->invalidate_by_multisessionid($payload->msi);
 		
