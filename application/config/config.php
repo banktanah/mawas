@@ -565,3 +565,41 @@ $config['recaptcha'] = [
     'site_key' => $_ENV['RECAPTCHA_SITE_KEY'],
     'secret_key' => $_ENV['RECAPTCHA_SECRET_KEY']
 ];
+
+/*
+|--------------------------------------------------------------------------
+| CORS Control
+|--------------------------------------------------------------------------
+|
+|
+*/
+$allowed_domain_raws = explode(",", $_ENV['CORS_ALLOWED_DOMAINS']);
+$allowed_domains = [];
+foreach($allowed_domain_raws as $domain){
+    $allowed_domains []= trim($domain);
+}
+
+$referer_headers = ['HTTP_ORIGIN', 'HTTP_REFERER', 'REMOTE_ADDR'];
+$referer = "";
+foreach($referer_headers as $header){
+    if(isset($_SERVER[$header])){
+        $referer = $_SERVER[$header];
+    }
+}
+if(!empty($referer) && $referer == '::1'){
+    $referer = 'localhost';
+}
+
+$allow_origin = "";
+if(in_array("*", $allowed_domains)){
+    $allow_origin = "*";
+}else if(in_array($referer, $allowed_domains)){
+    $allow_origin = $referer;
+}
+
+header("Access-Control-Allow-Origin: $allow_origin");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Content-Length, Accept-Encoding");
+if($_SERVER["REQUEST_METHOD"] == 'OPTIONS') {
+    die();
+}
