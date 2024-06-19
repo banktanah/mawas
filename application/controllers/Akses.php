@@ -275,15 +275,61 @@ class Akses extends CI_Controller {
 	public function personal()
 	{
 		$user_raws = $this->db
-		->select('user_id, upper(user_nama) as user_nama, nip')
-		->from('user')
+		->select("
+			user_id, 
+			upper(user_nama) as user_nama, 
+			(
+				select 
+					pegawai_nip 
+				from 
+					pegawai_karir 
+				where 
+					pegawai_karir.pegawai_id = u.pegawai_id
+					and pegawai_karir.tgl_akhir is null
+				order by 
+					pegawai_karir.tgl_awal desc
+				limit 1
+			) as nip
+		")
+		->from('user u')
 		->order_by('upper(user_nama)')
 		->get()
 		->result_array();
 
 		$users = [];
 		foreach($user_raws as $row_user){
+			$apps = [];
 			$app_list = [];
+			
+			$access_group = $this->db
+			->select('
+				app.apps_id,
+				app.apps_nama,
+				ug.name as group_name,
+				agg.role
+			')
+			->from('mx_user_usergroup mug')
+			->join('access_grant_group agg', 'mug.user_group_id = agg.user_group_id')
+			->join('user_group ug', 'agg.user_group_id = ug.user_group_id')
+			->join('apps app', 'agg.apps_id = app.apps_id')
+			->where('mug.user_id', $row_user['user_id'])
+			->get()
+			->result();
+			;
+			
+			// $row_user['group_access'] = $access_group;
+
+			foreach($access_group as $row){
+				$apps [] = [
+					'apps_id' => $row->apps_id,
+					'apps_nama' => $row->apps_nama,
+					'role' => $row->role,
+					'grant_type' => null
+				];
+				if(!in_array($row->apps_nama, $app_list)){
+					$app_list []= $row->apps_nama;
+				}
+			}
 
 			$access = $this->db
 			->select('
@@ -303,34 +349,18 @@ class Akses extends CI_Controller {
 			// $row_user['access'] = $access;
 
 			foreach($access as $row){
+				$apps [] = [
+					'apps_id' => $row->apps_id,
+					'apps_nama' => $row->apps_nama,
+					'role' => $row->role,
+					'grant_type' => $row->grant_type
+				];
 				if(!in_array($row->apps_nama, $app_list)){
 					$app_list []= $row->apps_nama;
 				}
 			}
 
-			$access_group = $this->db
-			->select('
-				app.apps_nama,
-				ug.name as group_name,
-				agg.role
-			')
-			->from('mx_user_usergroup mug')
-			->join('access_grant_group agg', 'mug.user_group_id = agg.user_group_id')
-			->join('user_group ug', 'agg.user_group_id = ug.user_group_id')
-			->join('apps app', 'agg.apps_id = app.apps_id')
-			->where('mug.user_id', $row_user['user_id'])
-			->get()
-			->result();
-			;
-			
-			// $row_user['group_access'] = $access_group;
-
-			foreach($access_group as $row){
-				if(!in_array($row->apps_nama, $app_list)){
-					$app_list []= $row->apps_nama;
-				}
-			}
-
+			$row_user['apps'] = $apps;
 			$row_user['app_list'] = $app_list;
 
 			$users []= json_decode(json_encode($row_user));
@@ -342,10 +372,55 @@ class Akses extends CI_Controller {
 		->from('apps')
 		->get()
 		->result();
+		
+		$data['roles'] = $this->db->query('SELECT `role` FROM access_grant_group UNION SELECT `role` FROM access_grant')->result();
 
 		$this->load->view('template/v_header');
 		$this->load->view('master/v_akses_personal',$data);
 		$this->load->view('template/v_footer');
+	}
+ 
+	public function personal_access_save(){
+		$post = $this->input->post(null, true);
+
+		$access_array = [];
+		if(strlen($post['access_array']) > 0){
+			$access_array = json_decode($post['access_array']);
+		}
+
+		$this->db->trans_begin();
+
+		$this->db->where(['user_id' => $post['user_id']])->delete('access_grant');
+
+        foreach($access_array as $row){
+			$this->db->insert('access_grant', [
+				'user_id' => $post['user_id'],
+				'apps_id' => $row->apps_id,
+				'role' => $row->role,
+				'grant_type' => $row->grant_type
+			]);
+        }
+
+        if($this->db->trans_status() === FALSE){
+            $this->db->trans_rollback();
+        }else{
+            $this->db->trans_commit();
+			$this->session->set_flashdata('success', "Data Akses personal berhasil disimpan !");
+        }
+
+		redirect('akses/personal');
+	}
+
+	public function personal_delete_user(){
+		$post = $this->input->post(null, true);
+
+		$status = $this->db->delete('mx_user_usergroup', [
+			'user_group_id' => $post['user_group_id'],
+			'user_id' => $post['user_id']
+		]);
+
+		$this->session->set_flashdata('success', "Remove User dari Group berhasil");
+		redirect('akses/group');
 	}
 }
 ?>

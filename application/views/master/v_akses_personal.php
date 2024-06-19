@@ -2,7 +2,7 @@
 	<section class="content-header">
 		<h1>
 			Akses Personal
-			<small>Overwrite hak akses dari grup jika bertabrakan</small>
+			<small>Tambah hak akses/Overwrite hak akses dari Group</small>
 		</h1>
 	</section>
 
@@ -12,62 +12,47 @@
 			<div class="col-lg-12">
 				<div class="box box-primary">
 					<div class="box-header">
-						<h3 class="box-title">User</h3>
-						<div class="pull-right">
-							<button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addKategori"><i class="fa fa-plus"></i>  &nbsp Tambah</button>
-							<a href="<?php echo base_url('apps') ?>" type="button" class="btn btn-warning btn-sm"><i class="fa fa-arrow-left"></i> &nbsp Kembali</a>
-						</div>
-
+						<h3 class="box-title">User List</h3>
 						<?php
 							$this->load->view('template/v_alert');
 						?>
 					</div>
 
 					<div class="box-body">
-						<table class="table table-bordered" id="table-datatable">
+						<table class="table table-bordered datatable-init">
 							<thead>
 								<tr>
-									<th width="1%">NO</th>
-									<th width="30%">User</th>
-									<th width="5%">OPSI</th>
+									<th>NO</th>
+									<th width="20%">User / NIP</th>
+									<th>Akses</th>
+									<th></th>
 								</tr>
 							</thead>
 							<tbody>
 								<?php 
 									$no = 1;
-									foreach($groups as $p){								
+									foreach($users as $u){
 								?>
 										<tr>
 											<td><?php echo $no++; ?></td>
-											<td><?php echo $p->name ?></td>
-											<td><?php echo $p->description; ?></td>
+											<td><?php echo $u->user_nama.(!empty($u->nip)? " / $u->nip": '') ?></td>
 											<td>
-												<!-- <button title="Edit Data" type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#editData<?php //echo $p->apps_id ?>"><i class="fa fa-pencil"></i> </button> -->
-												<button title="Hapus" type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#hapusData<?php echo $p->user_group_id ?>"><i class="fa fa-trash"></i>Hapus</button>	
-												<button title="Akses" type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modal_akses" onclick="addAccessData('<?php echo $p->user_group_id ?>')"><i class="fa fa-people"></i>Akses</button>
-												
-												<!-- Hapus data user -->
-												<div id="hapusData<?php echo $p->user_group_id ?>" class="modal fade" role="dialog">
-													<div class="modal-dialog">
-														<div class="modal-content">
-															<div class="modal-header">
-																<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-																	<span aria-hidden="true">&times;</span>
-																</button>
-																<h5 class="modal-title" id="exampleModalLabel">Peringatan!</h5>
-																
-
-															</div>
-															<div class="modal-body">
-																<p>Yakin ingin menghapus data ini ?</p>
-															</div>
-															<div class="modal-footer">
-																<button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
-																<a href="<?php echo base_url().'akses/akses_hapus?akses_id='.$p->user_group_id.'&apps_id='.$p->user_group_id; ?>" class="btn btn-primary">Hapus</a>
-															</div>
-														</div>
-													</div>
-												</div>
+												<?php 
+													// foreach($u->app_list as $row){
+													// 	echo "<div>$row</div>";
+													// }
+													$app_list = implode('; ', $u->app_list);
+													$app_list = strlen($app_list) > 30? substr($app_list, 0, 30).'...': $app_list;
+													echo $app_list;
+												?>
+											</td>
+											<td>
+												<button title="Akses" type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modal_akses" onclick="modalAccess('<?php echo $u->user_id ?>')" style="min-width: 70px; margin-bottom: 5px;">
+													<i class="fa fa-people"></i>&nbsp;Akses
+												</button>
+												<button title="Hapus" type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#hapusData<?php echo $u->nip ?>" style="min-width: 70px; margin-bottom: 5px;">
+													<i class="fa fa-trash"></i>&nbsp;Hapus
+												</button>	
 											</td>
 										</tr>
 								<?php 
@@ -76,96 +61,42 @@
 							</tbody>
 						</table>
 						
-
 					</div>
 				</div>
 
-			</div>
-		</div>
-
-		<!-- Modals -->
-		<div id="addKategori" class="modal fade" role="dialog">
-			<div class="modal-dialog">
-				<div class="modal-content">
-					<div class="modal-header">
-						<button type="button" class="close" data-dismiss="modal">&times;</button>
-						<center><h4 class="modal-title"> Tambah Akses <?= $nama_apps; ?></h4></center>
-					</div>
-					<div class="modal-body">
-
-						<form action="<?php echo base_url('akses/akses_act') ?>" method="post" enctype="multipart/form-data">											
-
-							<div class="form-group" style="width:100%">
-								<label style="width: 100%;"> Nama User</label>	
-								<input type="hidden" name="apps_id" value="<?= $apps_id; ?>">
-								<select id="namaUser" class="form-control" name="user_id" required style="width: 100%;">
-									<option value="">--Pilih Akun User--</option>
-									<?php 
-										$peg = $this->db->query("select * from user")->result();
-										foreach ($peg as $pg) {
-									?>
-									<option value="<?= $pg->user_id ?>"><?= $pg->user_nama.' | '.$pg->user_username ?></option>
-									<?php
-										}
-									?>													
-								</select>
-							</div>
-							<div class="form-group" style="width:100%">
-								<label style="width: 100%;"> Role User</label>	
-								<select class="form-control" name="role_nama" required style="width: 100%;">
-									<option value="">--Pilih Role User--</option>
-									<?php 
-										$role = $this->db->query("select * from user_role")->result();
-										foreach ($role as $r) {
-									?>
-									<option value="<?= $r->role_nama ?>"><?= $r->role_nama ?></option>
-									<?php
-										}
-									?>													
-								</select>
-							</div>
-						
-							<br>
-							<input type="submit" value="Simpan" class="btn btn-primary">
-						</form>
-					</div>											
-				</div>
 			</div>
 		</div>
 		
 		<script>
-			function addAccessData(usergroup_id){
-				let group_matrix_str = '<?php echo json_encode($groups)?>';
-				let group_matrix = group_matrix_str? JSON.parse(group_matrix_str): [];
+			var users = '<?php echo count($users)>0? json_encode($users): ''?>';
+			if(users.length > 0){
+				users = JSON.parse(users);
+			}
+			// console.log(users);
+			var user_apps = [];
+			var access_array = [];
 
-				let group = group_matrix.find(a => a.user_group_id == usergroup_id);
+			function modalAccess(user_id){
+				let user = users.find(a => a.user_id == user_id);
+
 				// console.log(group);
-				let datas = group? group.access: [];
-				// console.log(datas);
-
-				$('#modal_akses').find('#modal-title-group').html(group.name);
-				$('#modal_akses').find('[name="group_id"]').html(group.user_group_id);
-
-				let no = 1;
-				let content = '';
-				datas.forEach(a => {
-					content += `
-						<tr>
-							<td>${no++}</td>
-							<td>${a.apps_nama}</td>
-							<td>${a.role}</td>
-							<td>
-								<form action="<?php echo base_url('akses/group_delete') ?>" method="post">
-									<input type="hidden" name="apps_id" value="${a.apps_id}" />
-									<input type="hidden" name="role" value="${a.role}" />
-									<button type="submit" class="btn btn-danger btn-sm"><i class="fa fa-trash"></i>Hapus</button>	
-								</form>
-							</td>
-						</tr>
-					`;
+				user_apps = user.apps.length>0? user.apps: [];
+				user_apps = user_apps.sort((a, b) => {
+					if ( a.apps_nama < b.apps_nama ){
+						return -1;
+					}
+					if ( a.apps_nama > b.apps_nama ){
+						return 1;
+					}
+					return 0;
 				});
+				// console.log(user_apps);
 
-				$(`#tbody_access`).html(content);
+				$('#modal_akses').find('#modal-title-personal').html(user.user_nama);
+				access_array = user_apps.filter(a => a.grant_type != null);
+				$('#modal_akses').find('[name="user_id"]').val(user_id);
+
+				modalAccess_generateAccessTable()
 			}
 
 			function toggleCustomRole(){
@@ -173,25 +104,167 @@
 				$('#custom-role-form').toggle('slow');
 			}
 
-			function deleteRole(apps_id, role){
+			function modalAccess_generateAccessTable(toggled_apps_id = null, toggled_role = null){
+				if(toggled_apps_id !== null){
+					let toggledGrant = access_array.find(a => a.apps_id==toggled_apps_id && a.role==toggled_role).grant_type;
+					toggledGrant = toggledGrant=='+'? '-': '+';
+					access_array.find(a => a.apps_id==toggled_apps_id && a.role==toggled_role).grant_type = toggledGrant;
+				}
+				// console.log(access_array);
 
+				let no = 1;
+				let content = '';
+				user_apps.forEach(a => {
+					// let toggleSign = a.grant_type;
+					// if(toggled_apps_id !== null){
+					// 	let acc = access_array.find(b => b.apps_id==a.apps_id);
+					// 	// console.log(acc);
+					// 	toggleSign = acc.grant_type;
+					// }
+
+					let grantSign = a.grant_type;
+					let acc = access_array.find(b => b.apps_id==a.apps_id && b.role==a.role);
+					if(acc){
+						grantSign = acc.grant_type;
+					}
+
+					content += `
+						<tr>
+							<td>${no++}</td>
+							<td>${a.apps_nama}</td>
+							<td>${a.role}</td>
+							<td>${a.grant_type? a.grant_type: '[Group]'}</td>
+							<td>
+								${
+									a.grant_type? 
+										`
+											<div>
+												<button type="button" onclick="modalAccess_btnChangeGrant(${a.apps_id}, '${a.role}')" class="btn btn-info btn-sm" style="min-width: 105px; margin-bottom: 5px;"><i class="fa ${grantSign=='-'? 'fa-plus': 'fa-minus'}"></i>&nbsp Change Grant</button>
+											</div>
+											<div>
+												<button type="button" onclick="modalAccess_btnDelGrant(${a.apps_id}, '${a.role}')" class="btn btn-danger btn-sm" style="min-width: 105px; margin-bottom: 5px;"><i class="fa fa-trash"></i>&nbsp Hapus</button>
+											</div>
+											<!--
+											<form action="<?php echo base_url('akses/group_delete') ?>" method="post">
+												<input type="hidden" name="apps_id" value="${a.apps_id}" />
+												<input type="hidden" name="role" value="${a.role}" />
+												<button type="submit" class="btn btn-danger btn-sm"><i class="fa fa-trash"></i>&nbsp Hapus</button>	
+											</form>
+											-->
+										`
+									: '[Group]'
+								}
+							</td>
+						</tr>
+					`;
+				});
+
+				$('#modal_akses').find(`#tbody_access`).html(content);
+			}
+
+			function modalAccess_btnChangeGrant(apps_id, role){
+				let formData = $('#modal_akses').find('form').serializeArray();
+				// console.log(formData);
+
+				modalAccess_generateAccessTable(apps_id, role);
+			}
+
+			function modalAccess_btnAddGrant(){
+				// console.log(user_apps);
+
+				let apps_id = $('#modal_akses').find('#modal_akses_section_add').find('[name="apps_id"]').val();
+				let apps_nama = $('#modal_akses').find('#modal_akses_section_add').find('[name="apps_id"] option:selected').text();
+				let is_role_custom = $('#modal_akses').find('#modal_akses_section_add').find('[name="is_role_custom"]').is(":checked");
+				let role = $('#modal_akses').find('#modal_akses_section_add').find(`[name="${is_role_custom? 'role_custom': 'role'}"]`).val();
+
+				let acc = access_array.find(a => a.apps_id==apps_id && a.role==role);
+				if(acc){
+					alert(`Access to "${apps_nama}" (Role: "${role}") is already exists !`);
+					return;
+				}
+
+				let roleObj = {
+					apps_id: apps_id,
+					apps_nama: apps_nama,
+					grant_type: '+',
+					role: role
+				};
+
+				user_apps.push(roleObj);
+				access_array.push(roleObj);
+				user_apps = user_apps.sort((a, b) => {
+					if ( a.apps_nama < b.apps_nama ){
+						return -1;
+					}
+					if ( a.apps_nama > b.apps_nama ){
+						return 1;
+					}
+					return 0;
+				});
+
+				modalAccess_generateAccessTable();
+			}
+
+			function modalAccess_btnDelGrant(apps_id, role){
+				// console.log(user_apps);
+
+				user_apps = user_apps.filter(a => !(a.apps_id==apps_id && a.role==role));
+				access_array = access_array.filter(a => !(a.apps_id==apps_id && a.role==role));
+
+				user_apps = user_apps.sort((a, b) => {
+					if ( a.apps_nama < b.apps_nama ){
+						return -1;
+					}
+					if ( a.apps_nama > b.apps_nama ){
+						return 1;
+					}
+					return 0;
+				});
+
+				modalAccess_generateAccessTable();
+			}
+
+			function modalAccess_btnSave(){
+				// $('#modal_akses').find('form').submit(function(e){
+				// 	$('#modal_akses').find('[name="access_array"]').val(JSON.stringify(access_array));
+
+				// 	console.log($('#modal_akses').find('[name="access_array"]').val());
+
+				// 	return false;
+				// });
+
+				$('#modal_akses').find('form').on('submit', function(e){
+					// validation code here
+					// if(!valid) {
+					// 	e.preventDefault();
+					// }
+					
+					// console.log(access_array);
+					$('#modal_akses').find('[name="access_array"]').val(JSON.stringify(access_array));
+					// console.log($('#modal_akses').find('[name="access_array"]').val());
+
+					// e.preventDefault();
+					// e.stopPropagation();
+				});
 			}
 		</script>
+
 		<div id="modal_akses" class="modal fade" role="dialog">
 			<div class="modal-dialog">
 				<div class="modal-content">
 					<div class="modal-header">
 						<button type="button" class="close" data-dismiss="modal">&times;</button>
-						<center><h4 class="modal-title"> Tambah Akses <span id="modal-title-group"></span></h4></center>
+						<center><h4 class="modal-title"> Akses untuk User <span id="modal-title-personal"></span></h4></center>
 					</div>
 					<div class="modal-body">
 						
-						<table class="table table-bordered" id="table-datatable">
+						<table class="table table-bordered datatable-init">
 							<thead>
 								<tr>
 									<th>No</th>
 									<th>Aplikasi</th>
 									<th>Role</th>
+									<th>Grant-Type</th>
 									<th>Action</th>
 								</tr>
 							</thead>
@@ -199,45 +272,49 @@
 							</tbody>
 						</table>
 
-						<form action="<?php echo base_url('akses/group_add') ?>" method="post" enctype="multipart/form-data">											
-
-							<div class="form-group" style="width:100%">
-								<label style="width: 100%;"> Aplikasi</label>	
-								<input type="hidden" name="user_group_id" value="">
-								<select class="form-control" name="apps_id" required style="width: 100%;">
-									<option value="">--Pilih Aplikasi--</option>
-									<?php 
-										foreach($apps as $app) {
-									?>
-											<option value="<?= $app->apps_id ?>"><?= $app->apps_nama ?></option>
-									<?php
-										}
-									?>													
-								</select>
-							</div>
-							<div id="role-form" class="form-group" style="width:100%">
-								<label style="width: 100%;"> Role</label>	
-								<select class="form-control" name="role" style="width: 100%;">
-									<option value="">--Pilih Role--</option>
-									<?php 
-										foreach($roles as $r) {
-									?>
-											<option value="<?= $r->role ?>"><?= $r->role ?></option>
-									<?php
-										}
-									?>													
-								</select>
-							</div>
-							<div class="form-group" style="width:100%">
-								<label style="width: 100%;"> Custom Role <input type="checkbox" onchange="toggleCustomRole()"/></label>
-							</div>
-							<div id="custom-role-form" class="form-group" style="width:100%; display:none;">
-								<label style="width: 100%;"> Custom Role Name</label>
-								<input type="text" name="role_custom" class="form-control" />
+						<form action="<?php echo base_url('akses/personal_access_save') ?>" method="post" enctype="multipart/form-data">											
+							<input type="hidden" name="user_id" value="">
+							<input type="hidden" name="access_array" value="[]">
+							<div id="modal_akses_section_add" style="background-color: lightgrey; border: 1px solid black; border-radius: 5px; padding: 10px;">
+								<div class="form-group" style="width:100%;">
+									<label style="width: 100%;"> Aplikasi</label>
+									<select class="form-control" name="apps_id" style="width: 100%;">
+										<option value="">--Pilih Aplikasi--</option>
+										<?php 
+											foreach($apps as $app) {
+										?>
+												<option value="<?= $app->apps_id ?>"><?= $app->apps_nama ?></option>
+										<?php
+											}
+										?>													
+									</select>
+								</div>
+								<div id="role-form" class="form-group" style="width:100%">
+									<label style="width: 100%;"> Role</label>	
+									<select class="form-control" name="role" style="width: 100%;">
+										<option value="">--Pilih Role--</option>
+										<?php 
+											foreach($roles as $r) {
+										?>
+												<option value="<?= $r->role ?>"><?= $r->role ?></option>
+										<?php
+											}
+										?>													
+									</select>
+								</div>
+								<div class="form-group" style="width:100%">
+									<label style="width: 100%;"> Custom Role <input type="checkbox" name="is_role_custom" onchange="toggleCustomRole()"/></label>
+								</div>
+								<div id="custom-role-form" class="form-group" style="width:100%; display:none;">
+									<label style="width: 100%;"> Custom Role Name</label>
+									<input type="text" name="role_custom" class="form-control" />
+								</div>
+								
+								<input type="button" onclick="modalAccess_btnAddGrant()" value="Tambah" class="btn btn-primary">
 							</div>
 						
 							<br>
-							<input type="submit" value="Simpan" class="btn btn-primary">
+							<input type="submit" onclick="modalAccess_btnSave()" value="Simpan" class="btn btn-primary">
 						</form>
 					</div>											
 				</div>
