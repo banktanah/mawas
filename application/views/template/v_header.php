@@ -174,13 +174,13 @@
 											<li>
 												<a href="<?php echo base_url().'akses/group' ?>">
 													<i class="fa fa-exclamation-triangle"></i>
-													<span>USER GROUP</span>
+													<span>GROUP</span>
 												</a>
 											</li>
 											<li>
 												<a href="<?php echo base_url().'akses/personal' ?>">
 													<i class="fa fa-exclamation-triangle"></i>
-													<span>USER INDIVIDUAL</span>
+													<span>PERSONAL</span>
 												</a>
 											</li>
 										</ul>
