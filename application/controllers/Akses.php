@@ -115,8 +115,23 @@ class Akses extends CI_Controller {
 		->result();
 
 		$data['users'] = $this->db
-		->select('user_id, user_nama, nip')
-		->from('user')
+		->select("
+			user_id, 
+			user_nama, 
+			(
+				select 
+					pegawai_nip 
+				from 
+					pegawai_karir 
+				where 
+					pegawai_karir.pegawai_id = u.pegawai_id
+					and pegawai_karir.tgl_akhir is null
+				order by 
+					pegawai_karir.tgl_awal desc
+				limit 1
+			) as nip
+		")
+		->from('user u')
 		->get()
 		->result();
 
@@ -268,6 +283,8 @@ class Akses extends CI_Controller {
 
 		$users = [];
 		foreach($user_raws as $row_user){
+			$app_list = [];
+
 			$access = $this->db
 			->select('
 				ag.user_id, 
@@ -280,10 +297,16 @@ class Akses extends CI_Controller {
 			->join('apps app', 'ag.apps_id = app.apps_id')
 			->where('ag.user_id', $row_user['user_id'])
 			->get()
-			->result_array();
+			->result();
 			;
 
-			$row_user['access'] = $access;
+			// $row_user['access'] = $access;
+
+			foreach($access as $row){
+				if(!in_array($row->apps_nama, $app_list)){
+					$app_list []= $row->apps_nama;
+				}
+			}
 
 			$access_group = $this->db
 			->select('
@@ -300,7 +323,15 @@ class Akses extends CI_Controller {
 			->result();
 			;
 			
-			$row_user['group_access'] = $access_group;
+			// $row_user['group_access'] = $access_group;
+
+			foreach($access_group as $row){
+				if(!in_array($row->apps_nama, $app_list)){
+					$app_list []= $row->apps_nama;
+				}
+			}
+
+			$row_user['app_list'] = $app_list;
 
 			$users []= json_decode(json_encode($row_user));
 		}
