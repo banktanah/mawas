@@ -9,21 +9,27 @@ class User_model extends CI_Model{
 			$pegawai_id = intval($peg_id);
 		}
 
-		return $this->db
-			->select('*')
-			->from('user')
-			->group_start()
-				->where('user_username', $username)
-				// ->or_where('nip', $username)
-				->or_where('pegawai_id', $pegawai_id)
-			->group_end()
-			->group_start()
-				->where('user_password', md5($password))
-				->or_where('user_password', hash('sha256', $password))
-			->group_end()
-			->where('is_disabled', 0)
-			->get()
-			->row();
+		$res_arr = $this->db
+		->select("*")
+		->from('user')
+		->group_start()
+			->where('user_username', $username)
+			// ->or_where('nip', $username)
+			->or_where('pegawai_id', $pegawai_id)
+		->group_end()
+		->group_start()
+			->where('user_password', md5($password))
+			->or_where('user_password', hash('sha256', $password))
+		->group_end()
+		->where('is_disabled', 0)
+		->get()
+		->row_array();
+
+		if(!empty($res_arr)){
+			$res_arr['nip'] = $this->get_nip_by_pegawai_id($res_arr['pegawai_id']);
+		}
+
+		return json_decode(json_encode($res_arr));
 	}
 	
 	function has_access($user_id, $client_id){
@@ -117,12 +123,18 @@ class User_model extends CI_Model{
 	}
 
 	public function get_by_id($user_id){
-		return $this->db
-			->select('*')
-			->from('user')
-			->where('user_id', $user_id)
-			->get()
-			->row();
+		$res_arr = $this->db
+		->select('*')
+		->from('user')
+		->where('user_id', $user_id)
+		->get()
+		->row_array();
+
+		if(!empty($res_arr)){
+			$res_arr['nip'] = $this->get_nip_by_pegawai_id($res_arr['pegawai_id']);
+		}
+
+		return json_decode(json_encode($res_arr));
 	}
 
 	public function get_by_email_or_nip($email_or_nip){
@@ -132,25 +144,37 @@ class User_model extends CI_Model{
 			$pegawai_id = intval($peg_id);
 		}
 
-		return $this->db
-			->select('*')
-			->from('user')
-			->group_start()
-				->where('user_username', $email_or_nip)
-				// ->or_where('nip', $email_or_nip)
-				->or_where('pegawai_id', $pegawai_id)
-			->group_end()
-			->get()
-			->row();
+		$res_arr = $this->db
+		->select('*')
+		->from('user')
+		->group_start()
+			->where('user_username', $email_or_nip)
+			// ->or_where('nip', $email_or_nip)
+			->or_where('pegawai_id', $pegawai_id)
+		->group_end()
+		->get()
+		->row_array();
+
+		if(!empty($res_arr)){
+			$res_arr['nip'] = $this->get_nip_by_pegawai_id($res_arr['pegawai_id']);
+		}
+
+		return json_decode(json_encode($res_arr));
 	}
 
 	public function get_by_remember_token($remember_token){
-		return $this->db
+		$res_arr = $this->db
 			->select('*')
 			->from('user')
 			->where('remember_token', $remember_token)
 			->get()
-			->row();
+			->row_array();
+
+		if(!empty($res_arr)){
+			$res_arr['nip'] = $this->get_nip_by_pegawai_id($res_arr['pegawai_id']);
+		}
+
+		return json_decode(json_encode($res_arr));
 	}
 	
 	public function get_pegawai_id_by_nip($nip){
@@ -164,6 +188,23 @@ class User_model extends CI_Model{
 		if(empty($peg))return null;
 
 		return $peg->pegawai_id;
+	}
+
+	public function get_nip_by_pegawai_id($pegawai_id){
+		$res = $this->db->select("pegawai_nip")
+		->from('pegawai_karir')
+		->where('pegawai_id', intval($pegawai_id))
+		->where('tgl_akhir is null')
+		->order_by("tgl_awal", "desc")
+		->limit(1)
+		->get()
+		->row();
+		
+		if(empty($res)){
+			return null;
+		}
+
+		return $res->pegawai_nip;
 	}
 }
 
