@@ -644,10 +644,12 @@ class Sso extends CI_Controller {
 		$status = $this->sharedsession_model->invalidate_by_multisessionid($payload->msi);
 		
 		$user = $this->user_model->get_by_email_or_nip($payload->nip);
-		$status = $this->db
-			->where('user_id', $user->user_id)
-			->update('user', ['remember_token' => null])
-			;
+		if(!empty($user)){
+			$status = $this->db
+				->where('user_id', $user->user_id)
+				->update('user', ['remember_token' => null])
+				;
+		}
 
 		echo json_encode(['status' => 'success']);
 	}
