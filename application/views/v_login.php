@@ -36,7 +36,7 @@
 
       <img src="<?php echo base_url('gambar/logo.png') ?>" class="img-responsive">
 
-      <form action="<?php echo base_url().'welcome/aksi' ?>" method="post">
+      <form action="<?php echo base_url().uri_string().'/aksi' ?>" method="post">
 
         <div class="form-group has-feedback">          
           <input type="text" class="form-control" placeholder="Username" name="username">

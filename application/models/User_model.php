@@ -144,16 +144,38 @@ class User_model extends CI_Model{
 			$pegawai_id = intval($peg_id);
 		}
 
-		$res_arr = $this->db
-		->select('*')
-		->from('user')
-		->group_start()
-			->where('user_username', $email_or_nip)
-			// ->or_where('nip', $email_or_nip)
-			->or_where('pegawai_id', $pegawai_id)
-		->group_end()
-		->get()
-		->row_array();
+		// $res_arr = $this->db
+		// ->select('*')
+		// ->from('user')
+		// ->group_start()
+		// 	->where('user_username', $email_or_nip)
+		// 	// ->or_where('nip', $email_or_nip)
+		// 	->or_where('pegawai_id', $pegawai_id)
+		// ->group_end()
+		// ->get()
+		// ->row_array();
+
+		$res_arr = $this->db->query("
+			select
+				u.*
+			from
+				user u
+				join pegawai p on u.pegawai_id = p.pegawai_id
+				join pegawai_karir pk on p.pegawai_id = pk.pegawai_id
+			where
+				(
+					pk.pegawai_nip = '$email_or_nip'
+					or (
+						p.pegawai_email_pribadi = '$email_or_nip'
+						or p.pegawai_email_kantor = '$email_or_nip'
+					)
+				)
+				and pk.tgl_akhir is null
+				and u.is_disabled = 0
+			order by
+				pk.tgl_awal desc
+			limit 1
+		")->row_array();
 
 		if(!empty($res_arr)){
 			$res_arr['nip'] = $this->get_nip_by_pegawai_id($res_arr['pegawai_id']);
@@ -205,6 +227,30 @@ class User_model extends CI_Model{
 		}
 
 		return $res->pegawai_nip;
+	}
+
+	public function generate_session_data($nip, $roles = []){
+		$data = $this->db->query("
+			select
+				u.user_id,
+				p.pegawai_nama as user_nama,
+				u.hrm_level
+			from
+				pegawai_karir pk
+				left join user u on pk.pegawai_id = u.pegawai_id 
+				left join pegawai p on pk.pegawai_id = p.pegawai_id
+			where
+				pk.pegawai_nip = '$nip'
+		")
+		->row();
+
+		return array(
+			'id' => $data->user_id,
+			'nama' => $data->user_nama,		
+			'hrm_level' => $data->hrm_level,			
+			'status' => 'telah_login',
+			'roles' => $roles
+		);
 	}
 }
 

@@ -597,58 +597,24 @@ class Sso extends CI_Controller {
 	
 	public function logout(){
 		$payload = null;
-		$exception = null;
-
-		try {
-			$bearer = self::get_header_auth_token('Bearer');
-			$payload = JWT::decode($bearer, new Key($this->server_secret, 'HS256'));
-		} catch (InvalidArgumentException $e) {
-			// provided key/key-array is empty or malformed.
-			http_response_code(500);
-			$exception = $e;
-		} catch (DomainException $e) {
-			// provided algorithm is unsupported OR
-			// provided key is invalid OR
-			// unknown error thrown in openSSL or libsodium OR
-			// libsodium is required but not available.
-			http_response_code(500);
-			$exception = $e;
-		} catch (SignatureInvalidException $e) {
-			// provided JWT signature verification failed.
-			log_message('error', $e->getMessage());
-			http_response_code(401);
-			$exception = $e;
-		} catch (BeforeValidException $e) {
-			// provided JWT is trying to be used before "nbf" claim OR
-			// provided JWT is trying to be used before "iat" claim.
-			log_message('error', $e->getMessage().' => '.$e->getPayload());
-			http_response_code(401);
-			$exception = $e;
-		} catch (ExpiredException $e) {
-			// provided JWT is trying to be used after "exp" claim.
+		try{
+			$payload = $this->verify_bearer_header(true);
+		}catch(ExpiredException $e){
 			$payload = $e->getPayload();
-		} catch (UnexpectedValueException $e) {
-			// provided JWT is malformed OR
-			// provided JWT is missing an algorithm / using an unsupported algorithm OR
-			// provided JWT algorithm does not match provided key OR
-			// provided key ID in key/key-array is empty or invalid.
-			http_response_code(500);
-			$exception = $e;
+		}catch(\Exception $e){
+			// echo $e->getMessage();
+			// exit;
 		}
 
-		if(!empty($exception)){
-			echo $exception->getMessage();
-			exit;
-		}
-
-		$status = $this->sharedsession_model->invalidate_by_multisessionid($payload->msi);
-		
-		$user = $this->user_model->get_by_email_or_nip($payload->nip);
-		if(!empty($user)){
-			$status = $this->db
-				->where('user_id', $user->user_id)
-				->update('user', ['remember_token' => null])
-				;
+		if(!empty($payload)){
+			$status = $this->sharedsession_model->invalidate_by_multisessionid($payload->msi);
+			$user = $this->user_model->get_by_email_or_nip($payload->nip);
+			if(!empty($user)){
+				$status = $this->db
+					->where('user_id', $user->user_id)
+					->update('user', ['remember_token' => null])
+					;
+			}
 		}
 
 		echo json_encode(['status' => 'success']);
@@ -663,7 +629,16 @@ class Sso extends CI_Controller {
 			echo 'Missing client_id';
 			exit;
 		}
-		$payload = $this->verify_bearer_header();
+
+		$payload = null;
+		try{
+			$payload = $this->verify_bearer_header(true);
+		}catch(ExpiredException $e){
+			$payload = $e->getPayload();
+		}catch(\Exception $e){
+			echo $e->getMessage();
+			exit;
+		}
 
 		$userdata = $this->user_model->get_by_email_or_nip($payload->nip);
 		$response = [
@@ -887,7 +862,7 @@ class Sso extends CI_Controller {
 		return $basic_token_decoded;
 	}
 
-	private function verify_bearer_header(){
+	private function verify_bearer_header($throwException = false){
 		$exception = null;
 
 		try {
@@ -930,6 +905,9 @@ class Sso extends CI_Controller {
 		}
 
 		if(!empty($exception)){
+			if($throwException){
+				throw $exception;
+			}
 			echo $exception->getMessage();
 			exit;
 		}

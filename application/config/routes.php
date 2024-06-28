@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 
-$route['default_controller'] = 'pegawai';
+$route['default_controller'] = 'home';
 
 // route login
 $route['login'] = 'login';
