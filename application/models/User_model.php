@@ -123,12 +123,48 @@ class User_model extends CI_Model{
 	}
 
 	public function get_by_id($user_id){
-		$res_arr = $this->db
-		->select('*')
-		->from('user')
-		->where('user_id', $user_id)
-		->get()
-		->row_array();
+		// $res_arr = $this->db
+		// ->select('*')
+		// ->from('user')
+		// ->where('user_id', $user_id)
+		// ->get()
+		// ->row_array();
+
+		$this->db->query("
+			create temporary table if not exists _karir as
+				select
+					u.*,
+					(
+						select 
+							pk.karir_id
+						FROM 
+							pegawai_karir pk
+						WHERE 
+							pk.pegawai_id = u.pegawai_id 
+							and pk.tgl_akhir is NULL 
+						order by pk.tgl_awal
+						limit 1
+					) as karir_id
+				from
+					user u
+				where
+					u.user_id = $user_id
+			;
+		");
+		
+		$res_arr = $this->db->query("
+			select
+				tk.*,
+				d.divisi_nama as divisi,
+				db.divisi_bagian_nama as bagian,
+				mps.status_nama as status
+			from
+				_karir tk
+				join pegawai_karir pk on tk.karir_id = pk.karir_id
+				join divisi d on pk.divisi_id = d.divisi_id
+				join divisi_bagian db on pk.divisi_bagian_id = db.divisi_bagian_id
+				join master_pegawai_status mps on pk.status_pegawai_id = mps.status_pegawai_id 
+		")->row_array();
 
 		if(!empty($res_arr)){
 			$res_arr['nip'] = $this->get_nip_by_pegawai_id($res_arr['pegawai_id']);

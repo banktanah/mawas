@@ -854,6 +854,8 @@ class Sso extends CI_Controller {
 			'nip' => $userdata->nip,
 			'name' => $userdata->user_nama,
 			'email' => $userdata->user_username,
+			'divisi' => $userdata->divisi,
+			'bagian' => $userdata->bagian,
 			'roles' => $roles
 		];
 	}
