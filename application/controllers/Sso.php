@@ -699,16 +699,17 @@ class Sso extends CI_Controller {
 		}
 
 		$username = $post['username'];
-		$user = $this->db
-		->from('user')
-		->group_start()
-			->where('user_username', $username)
-			->or_where('nip', $username)
-		->group_end()
-		// ->where('user_password', md5($password))
-		// ->where('is_disabled', 0)
-		->get()
-		->row();
+		// $user = $this->db
+		// ->from('user')
+		// ->group_start()
+		// 	->where('user_username', $username)
+		// 	->or_where('nip', $username)
+		// ->group_end()
+		// // ->where('user_password', md5($password))
+		// // ->where('is_disabled', 0)
+		// ->get()
+		// ->row();
+		$user = $this->user_model->get_by_email_or_nip($username);
 
 		if(empty($user)){
 			$this->session->set_flashdata('error', 'NIP/Email tidak ditemukan !');
@@ -818,8 +819,11 @@ class Sso extends CI_Controller {
 			redirect($redirect_back_uri);
 		}
 
+		$user = $this->user_model->get_by_email_or_nip($nip);
+
 		$res = $this->db
-		->where('nip', $nip)
+		// ->where('nip', $nip)
+		->where('user_id', $user->user_id)
 		->update('user', [
 			'user_password' => hash('sha256', $post['password'])
 		]);
