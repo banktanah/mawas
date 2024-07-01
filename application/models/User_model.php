@@ -130,6 +130,7 @@ class User_model extends CI_Model{
 		// ->get()
 		// ->row_array();
 
+		$this->db->query("drop table if exists _karir");
 		$this->db->query("
 			create temporary table if not exists _karir as
 				select
@@ -160,10 +161,10 @@ class User_model extends CI_Model{
 				mps.status_nama as status
 			from
 				_karir tk
-				join pegawai_karir pk on tk.karir_id = pk.karir_id
-				join divisi d on pk.divisi_id = d.divisi_id
-				join divisi_bagian db on pk.divisi_bagian_id = db.divisi_bagian_id
-				join master_pegawai_status mps on pk.status_pegawai_id = mps.status_pegawai_id 
+				left join pegawai_karir pk on tk.karir_id = pk.karir_id
+				left join divisi d on pk.divisi_id = d.divisi_id
+				left join divisi_bagian db on pk.divisi_bagian_id = db.divisi_bagian_id
+				left join master_pegawai_status mps on pk.status_pegawai_id = mps.status_pegawai_id 
 		")->row_array();
 
 		if(!empty($res_arr)){
